@@ -1,8 +1,7 @@
 import uuid
 
-from sqlalchemy.orm import Mapped, mapped_column, relationship
-
 from apps.base.models import BaseEntity
+from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 
 class Application(BaseEntity):
@@ -10,7 +9,6 @@ class Application(BaseEntity):
     url: Mapped[str] = mapped_column(index=True)
 
     permissions = relationship("Permission", back_populates="application")
-    proposals = relationship("Proposal", back_populates="application")
 
 
 class Permission(BaseEntity):

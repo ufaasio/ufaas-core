@@ -2,11 +2,14 @@ import uuid
 from datetime import datetime
 from decimal import Decimal
 
+from apps.base.models import (
+    BaseEntity,
+    BusinessOwnedEntity,
+    ImmutableBusinessOwnedEntity,
+)
 from pydantic import BaseModel
 from sqlalchemy import JSON, ForeignKey
 from sqlalchemy.orm import Mapped, mapped_column, relationship
-
-from apps.base.models import BaseEntity, BusinessOwnedEntity
 
 
 class Wallet(BusinessOwnedEntity):
@@ -27,15 +30,27 @@ class WalletHold(BaseEntity):
     wallet = relationship("Wallet", back_populates="holds")
 
 
-class Transaction(BusinessOwnedEntity):
+class Transaction(ImmutableBusinessOwnedEntity):
+    proposal_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("proposal.uid"), index=True
+    )
     wallet_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("wallet.uid"), index=True)
     amount: Mapped[Decimal] = mapped_column(onupdate=None)
     balance: Mapped[Decimal]
     description: Mapped[str | None]
-    note: Mapped[str | None]
 
     wallet = relationship("Wallet", back_populates="transactions")
     business = relationship("Business", back_populates="transactions")
+    proposal = relationship("Proposal", back_populates="transactions")
+    notes = relationship("TransactionNote", back_populates="transaction")
+
+
+class TransactionNote(BaseEntity):
+    transaction_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("transaction.uid"), index=True
+    )
+    note: Mapped[str | None]
+    transaction = relationship("Transaction", back_populates="notes")
 
 
 class Participant(BaseModel):
@@ -50,18 +65,20 @@ class Participant(BaseModel):
     # wallet = relationship("Wallet", back_populates="participants")
 
 
-class Proposal(BaseEntity):
+class Proposal(BusinessOwnedEntity):
     issuer_id: Mapped[uuid.UUID] = mapped_column(index=True)
     amount: Mapped[Decimal] = mapped_column(onupdate=None)
     description: Mapped[str | None]
     note: Mapped[str | None]
     status: Mapped[str | None] = mapped_column(index=True)
 
-    sources: Mapped[list[Participant]] = mapped_column(JSON)
-    recipients: Mapped[list[Participant]] = mapped_column(JSON)
+    # sources: Mapped[list[Participant]] = mapped_column(JSON)
+    # recipients: Mapped[list[Participant]] = mapped_column(JSON)
+    participants: Mapped[list[Participant]] = mapped_column(JSON)
 
-    application = relationship("Application", back_populates="proposals")
     business = relationship("Business", back_populates="proposals")
+    transactions = relationship("Transaction", back_populates="proposal")
+
     # sources = relationship(
     #     "Participant", secondary="proposal_sources", backref=backref("source_proposals")
     # )

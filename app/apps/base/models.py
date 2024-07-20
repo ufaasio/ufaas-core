@@ -72,14 +72,12 @@ class OwnedEntity(BaseEntity):
     __abstract__ = True
 
     user_id: Mapped[uuid.UUID] = mapped_column(index=True)
-    # Column(pgUUID(as_uuid=True), index=True)
 
 
 class BusinessEntity(BaseEntity):
     __abstract__ = True
 
     business_id: Mapped[uuid.UUID] = mapped_column(index=True)
-    # Column(pgUUID(as_uuid=True), index=True)
 
 
 class BusinessOwnedEntity(BaseEntity):
@@ -87,25 +85,6 @@ class BusinessOwnedEntity(BaseEntity):
 
     business_id: Mapped[uuid.UUID] = mapped_column(index=True)
     user_id: Mapped[uuid.UUID] = mapped_column(index=True)
-
-
-class OwnedEntity(BaseEntity):
-    __abstract__ = True
-
-    owner_id: Mapped[uuid.UUID] = mapped_column(index=True)
-
-
-class BusinessEntity(BaseEntity):
-    __abstract__ = True
-
-    business_id: Mapped[uuid.UUID] = mapped_column(index=True)
-
-
-class BusinessOwnedEntity(BusinessEntity, OwnedEntity):
-    __abstract__ = True
-
-    # owner_id: Mapped[uuid.UUID] = mapped_column(index=True)
-    # business_id: Mapped[uuid.UUID] = mapped_column(index=True)
 
 
 class ImmutableBase(BaseEntity):

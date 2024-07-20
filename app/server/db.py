@@ -15,7 +15,7 @@ from apps.business import models as business_models
 __all__ = ["accounting_models", "applications_models", "business_models"]
 
 
-async def get_session():
+async def get_db_session():
     async with async_session() as session:
         yield session
 

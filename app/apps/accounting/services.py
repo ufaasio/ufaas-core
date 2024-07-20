@@ -1,8 +1,8 @@
 import logging
 import uuid
 
+from apps.accounting.models import Proposal, Transaction, Wallet
 from apps.business.models import Business
-from apps.accounting.models import Transaction, Wallet, Proposal, Participant
 
 
 async def fail_proposal(proposal: Proposal, message: str = None):

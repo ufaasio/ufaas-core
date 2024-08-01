@@ -1,36 +1,38 @@
 import uuid
 from datetime import datetime
+from decimal import Decimal
 
-from apps.base.schemas import BaseEntitySchema
+from apps.base.schemas import BaseEntitySchema, BusinessEntitySchema, BusinessOwnedEntitySchema
 
 
-class TransactionSchema(BaseEntitySchema):
+class WalletSchema(BusinessOwnedEntitySchema):
+    balance: Decimal
+    held_amount: Decimal
+    # transactions: list[TransactionSchema] = []
+    # proposals: list[ProposalSchema] = []
+
+
+class WalletHoldSchema(BusinessOwnedEntitySchema):
     wallet_id: uuid.UUID
-    amount: float
-    balance_after: float
-    timestamp: datetime
-
-
-class ProposalSchema(BaseEntitySchema):
-    wallet_id: uuid.UUID
-    business_id: uuid.UUID
-    user_id: uuid.UUID
-    amount: float
-    currency: str
+    amount: Decimal
+    expires_at: datetime
     status: str
-    timestamp: datetime
 
 
-class WalletSchema(BaseEntitySchema):
-    business_id: uuid.UUID
-    user_id: uuid.UUID
+class TransactionSchema(BusinessOwnedEntitySchema):
+    proposal_id: uuid.UUID
+    wallet_id: uuid.UUID
+    amount: Decimal
     currency: str
-    balance: float
-    transactions: list[TransactionSchema] = []
-    proposals: list[ProposalSchema] = []
+    balance: Decimal
+    description: str
+    note: str
 
-
-class PermissionSchema(BaseEntitySchema):
-    business_id: uuid.UUID
-    third_party_app_id: uuid.UUID
-    can_submit_proposal: bool
+from .models import Participant
+class ProposalSchema(BusinessOwnedEntitySchema):
+    issuer_id: uuid.UUID
+    amount: Decimal
+    description: str
+    note: str
+    status: str
+    participants: list[Participant]

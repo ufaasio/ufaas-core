@@ -1,6 +1,5 @@
-from typing import Callable, TypeVar, Optional, Type
+from typing import Callable, Optional, Type, TypeVar
 
-from core.exceptions import BaseHTTPException
 from fastapi import Request
 from usso import UserData
 

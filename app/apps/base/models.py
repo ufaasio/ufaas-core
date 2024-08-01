@@ -52,19 +52,6 @@ class BaseEntity:
     #     self.metadata = None
 
 
-class ImmutableBase(BaseEntity):
-    __abstract__ = True
-
-    @staticmethod
-    def prevent_update(mapper, connection, target):
-        if connection.in_transaction() and target.id is not None:
-            raise ValueError("Updates are not allowed for this object")
-
-    @classmethod
-    def __declare_last__(cls):
-        event.listen(cls, "before_update", cls.prevent_update)
-
-
 Base = BaseEntity
 
 
@@ -77,14 +64,11 @@ class OwnedEntity(BaseEntity):
 class BusinessEntity(BaseEntity):
     __abstract__ = True
 
-    business_id: Mapped[uuid.UUID] = mapped_column(index=True)
+    business_name: Mapped[str] = mapped_column(index=True)
 
 
-class BusinessOwnedEntity(BaseEntity):
+class BusinessOwnedEntity(OwnedEntity, BusinessEntity):
     __abstract__ = True
-
-    business_id: Mapped[uuid.UUID] = mapped_column(index=True)
-    user_id: Mapped[uuid.UUID] = mapped_column(index=True)
 
 
 class ImmutableBase(BaseEntity):

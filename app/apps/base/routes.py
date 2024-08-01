@@ -1,21 +1,24 @@
 from typing import Any, Generic, Type, TypeVar
 
 import singleton
-from core.exceptions import BaseHTTPException
 from fastapi import APIRouter, Depends, Request
-from server.config import Settings
-from server.db import get_db_session
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
 
+from core.exceptions import BaseHTTPException
+from server.config import Settings
+from server.db import get_db_session
+
 from .handlers import create_dto, update_dto
 from .models import BaseEntity
+from .schemas import BaseEntitySchema, PaginatedResponse
 
 # Define a type variable
 T = TypeVar("T", bound=BaseEntity)
+TS = TypeVar("TS", bound=BaseEntitySchema)
 
 
-class AbstractBaseRouter(Generic[T], metaclass=singleton.Singleton):
+class AbstractBaseRouter(Generic[T, TS], metaclass=singleton.Singleton):
     def __init__(
         self,
         model: Type[T],
@@ -32,40 +35,54 @@ class AbstractBaseRouter(Generic[T], metaclass=singleton.Singleton):
         if tags is None:
             tags = [self.model.__name__]
         self.router = APIRouter(prefix=prefix, tags=tags, **kwargs)
+        self.config_schemas(**kwargs)
+        self.config_routes(**kwargs)
 
-        self.config_routes()
+    def config_schemas(self, **kwargs):
+        self.list_response_schema = PaginatedResponse[TS]
+        self.retrieve_response_schema = TS
+        self.create_response_schema = TS
+        self.update_response_schema = TS
+        self.delete_response_schema = TS
 
-    def config_routes(self, *args, **kwargs):
+        self.create_request_schema = TS
+        self.update_request_schema = TS
+
+    def config_routes(self, **kwargs):
         self.router.add_api_route(
             "/",
             self.list_items,
             methods=["GET"],
-            response_model=list[self.model],
+            response_model=self.list_response_schema,
+            status_code=200,
         )
         self.router.add_api_route(
             "/{uid:uuid}",
             self.retrieve_item,
             methods=["GET"],
-            response_model=self.model,
+            response_model=self.retrieve_response_schema,
+            status_code=200,
         )
         self.router.add_api_route(
             "/",
             self.create_item,
             methods=["POST"],
-            response_model=self.model,
+            response_model=self.create_response_schema,
             status_code=201,
         )
         self.router.add_api_route(
             "/{uid:uuid}",
             self.update_item,
             methods=["PATCH"],
-            response_model=self.model,
+            response_model=self.update_response_schema,
+            status_code=200,
         )
         self.router.add_api_route(
             "/{uid:uuid}",
             self.delete_item,
             methods=["DELETE"],
-            response_model=self.model,
+            response_model=self.delete_response_schema,
+            # status_code=204,
         )
 
     async def get_user(self, request: Request, *args, **kwargs):

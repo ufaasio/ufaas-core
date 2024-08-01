@@ -2,30 +2,53 @@ import uuid
 from datetime import datetime
 from decimal import Decimal
 
+from pydantic import BaseModel
+from sqlalchemy import JSON, ForeignKey, Enum as SqlEnum
+from sqlalchemy.orm import Mapped, mapped_column, relationship
+from enum import Enum
 from apps.base.models import (
     BaseEntity,
     BusinessOwnedEntity,
     ImmutableBusinessOwnedEntity,
 )
-from pydantic import BaseModel
-from sqlalchemy import JSON, ForeignKey
-from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 
 class Wallet(BusinessOwnedEntity):
-    currency: Mapped[str] = mapped_column(index=True)
+    # currency: Mapped[str] = mapped_column(index=True)
     # balance = Column(Float, default=0.0)
 
-    transactions = relationship("Transaction", back_populates="wallet")
+    transactions = relationship(
+        "Transaction", back_populates="wallet"
+    )
     holds = relationship("WalletHold", back_populates="wallet")
-    participants = relationship("Participant", back_populates="wallet")
+    # participants = relationship("Participant", back_populates="wallet")
+
+    @property
+    def balance(self) -> Decimal:
+        latest_transaction: Transaction = self.transactions[-1] if self.transactions else None
+        return latest_transaction.balance if latest_transaction else Decimal(0)
+
+    @property
+    def held_amount(self) -> Decimal:
+        return sum(
+            hold.amount
+            for hold in self.holds
+            if hold.status == "active" and hold.expires_at > datetime.now()
+        )
 
 
-class WalletHold(BaseEntity):
+class StatusEnum(str, Enum):
+    ACTIVE = "active"
+    INACTIVE = "inactive"
+    SUSPENDED = "suspended"
+
+
+class WalletHold(BusinessOwnedEntity):
     wallet_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("wallet.uid"), index=True)
     amount: Mapped[Decimal]
     expires_at: Mapped[datetime] = mapped_column(index=True)
-    status: Mapped[str] = mapped_column(index=True)
+    status: Mapped[StatusEnum] = mapped_column(index=True)
+    # status: Mapped[StatusEnum] = mapped_column(SqlEnum(StatusEnum), index=True)
 
     wallet = relationship("Wallet", back_populates="holds")
 
@@ -36,20 +59,25 @@ class Transaction(ImmutableBusinessOwnedEntity):
     )
     wallet_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("wallet.uid"), index=True)
     amount: Mapped[Decimal] = mapped_column(onupdate=None)
+    currency: Mapped[str] = mapped_column(index=True)
     balance: Mapped[Decimal]
     description: Mapped[str | None]
 
     wallet = relationship("Wallet", back_populates="transactions")
-    business = relationship("Business", back_populates="transactions")
+    # business = relationship("Business", back_populates="transactions")
     proposal = relationship("Proposal", back_populates="transactions")
     notes = relationship("TransactionNote", back_populates="transaction")
 
+    @property
+    def note(self) -> Decimal:
+        return self.notes[-1].note if self.notes else None
 
-class TransactionNote(BaseEntity):
+
+class TransactionNote(BusinessOwnedEntity):
     transaction_id: Mapped[uuid.UUID] = mapped_column(
         ForeignKey("transaction.uid"), index=True
     )
-    note: Mapped[str | None]
+    note: Mapped[str]
     transaction = relationship("Transaction", back_populates="notes")
 
 
@@ -76,7 +104,7 @@ class Proposal(BusinessOwnedEntity):
     # recipients: Mapped[list[Participant]] = mapped_column(JSON)
     participants: Mapped[list[Participant]] = mapped_column(JSON)
 
-    business = relationship("Business", back_populates="proposals")
+    # business = relationship("Business", back_populates="proposals")
     transactions = relationship("Transaction", back_populates="proposal")
 
     # sources = relationship(

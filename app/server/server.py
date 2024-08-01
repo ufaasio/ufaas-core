@@ -110,14 +110,14 @@ from apps.accounting.routes import (
 from apps.applications.routes import router as application_router
 from apps.business.routes import router as business_router
 
-app.include_router(business_router)
-app.include_router(wallet_router)
-app.include_router(wallet_hold_router)
-app.include_router(transaction_router)
-app.include_router(proposal_router)
-app.include_router(application_router)
+app.include_router(business_router, prefix="/api/v1")
+app.include_router(wallet_router, prefix="/api/v1")
+app.include_router(wallet_hold_router, prefix="/api/v1")
+app.include_router(transaction_router, prefix="/api/v1")
+app.include_router(proposal_router, prefix="/api/v1")
+app.include_router(application_router, prefix="/api/v1")
 
 
-@app.get("/")
+@app.get("/api/v1/health")
 async def index():
-    return {"message": "Hello World!"}
+    return {"status": "ok"}

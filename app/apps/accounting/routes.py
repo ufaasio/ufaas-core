@@ -3,9 +3,9 @@ from usso.fastapi import jwt_access_security
 from apps.business.routes import AbstractBusinessBaseRouter
 
 from .models import Proposal, Transaction, Wallet, WalletHold
+from .schemas import ProposalSchema, TransactionSchema, WalletHoldSchema, WalletSchema
 
-
-class WalletRouter(AbstractBusinessBaseRouter[Wallet]):
+class WalletRouter(AbstractBusinessBaseRouter[Wallet, WalletSchema]):
     def __init__(self):
         super().__init__(
             model=Wallet,
@@ -38,7 +38,7 @@ class WalletRouter(AbstractBusinessBaseRouter[Wallet]):
         )
 
 
-class WalletHoldRouter(AbstractBusinessBaseRouter[WalletHold]):
+class WalletHoldRouter(AbstractBusinessBaseRouter[WalletHold, WalletHoldSchema]):
     def __init__(self):
         super().__init__(
             model=WalletHold,
@@ -78,7 +78,7 @@ class WalletHoldRouter(AbstractBusinessBaseRouter[WalletHold]):
         )
 
 
-class TransactionRouter(AbstractBusinessBaseRouter[Transaction]):
+class TransactionRouter(AbstractBusinessBaseRouter[Transaction, TransactionSchema]):
     def __init__(self):
         super().__init__(
             model=Transaction,
@@ -104,7 +104,7 @@ class TransactionRouter(AbstractBusinessBaseRouter[Transaction]):
         )
 
 
-class ProposalRouter(AbstractBusinessBaseRouter[Proposal]):
+class ProposalRouter(AbstractBusinessBaseRouter[Proposal, ProposalSchema]):
     def __init__(self):
         super().__init__(
             model=Proposal,

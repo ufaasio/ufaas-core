@@ -15,5 +15,8 @@ psycopg2-binary
 databases
 
 aiosqlite
+aiohttp
+aiocache
+aiofiles
 
 usso

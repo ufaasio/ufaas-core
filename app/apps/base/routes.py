@@ -1,13 +1,12 @@
 from typing import Any, Generic, Type, TypeVar
 
 import singleton
-from fastapi import APIRouter, Depends, Request
-from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.future import select
-
 from core.exceptions import BaseHTTPException
+from fastapi import APIRouter, Depends, Query, Request
 from server.config import Settings
 from server.db import get_db_session
+from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.future import select
 
 from .handlers import create_dto, update_dto
 from .models import BaseEntity
@@ -93,8 +92,8 @@ class AbstractBaseRouter(Generic[T, TS], metaclass=singleton.Singleton):
     async def list_items(
         self,
         request: Request,
-        offset: int = 0,
-        limit: int = 10,
+        offset: int = Query(0, ge=0),
+        limit: int = Query(10, ge=0, le=Settings.page_max_limit),
         session: AsyncSession = Depends(get_db_session),
     ):
         user = await self.get_user(request)

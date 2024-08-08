@@ -1,31 +1,27 @@
 import uuid
 from datetime import datetime
 from decimal import Decimal
-
-from pydantic import BaseModel
-from sqlalchemy import JSON, ForeignKey, Enum as SqlEnum
-from sqlalchemy.orm import Mapped, mapped_column, relationship
 from enum import Enum
-from apps.base.models import (
-    BaseEntity,
-    BusinessOwnedEntity,
-    ImmutableBusinessOwnedEntity,
-)
+
+from apps.base.models import BusinessOwnedEntity, ImmutableBusinessOwnedEntity
+from pydantic import BaseModel
+from sqlalchemy import JSON, ForeignKey
+from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 
 class Wallet(BusinessOwnedEntity):
     # currency: Mapped[str] = mapped_column(index=True)
     # balance = Column(Float, default=0.0)
 
-    transactions = relationship(
-        "Transaction", back_populates="wallet"
-    )
+    transactions = relationship("Transaction", back_populates="wallet")
     holds = relationship("WalletHold", back_populates="wallet")
     # participants = relationship("Participant", back_populates="wallet")
 
     @property
     def balance(self) -> Decimal:
-        latest_transaction: Transaction = self.transactions[-1] if self.transactions else None
+        latest_transaction: Transaction = (
+            self.transactions[-1] if self.transactions else None
+        )
         return latest_transaction.balance if latest_transaction else Decimal(0)
 
     @property

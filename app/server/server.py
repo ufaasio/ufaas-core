@@ -4,13 +4,12 @@ from contextlib import asynccontextmanager
 
 import fastapi
 import pydantic
+from core import exceptions
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from json_advanced import dumps
-from usso.exceptions import USSOException
-
-from core import exceptions
 from server import config, db
+from usso.exceptions import USSOException
 
 
 @asynccontextmanager

@@ -1,8 +1,8 @@
 import uuid
 
-from sqlalchemy.orm import Mapped, mapped_column, relationship
-
 from apps.base.models import BaseEntity, BusinessEntity
+from sqlalchemy import ForeignKey
+from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 
 class Application(BaseEntity):
@@ -13,7 +13,7 @@ class Application(BaseEntity):
 
 
 class Permission(BusinessEntity):
-    app_id: Mapped[uuid.UUID] = mapped_column(index=True)
+    app_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("application.uid"), index=True)
     write_access: Mapped[bool] = mapped_column(default=False)
 
     # business = relationship("Business", back_populates="permissions")

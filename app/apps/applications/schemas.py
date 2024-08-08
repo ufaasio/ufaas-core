@@ -1,4 +1,5 @@
 import uuid
+
 from apps.base.schemas import BaseEntitySchema
 
 

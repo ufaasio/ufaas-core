@@ -2,7 +2,7 @@ import uuid
 from datetime import datetime
 from decimal import Decimal
 
-from apps.base.schemas import BaseEntitySchema, BusinessEntitySchema, BusinessOwnedEntitySchema
+from apps.base.schemas import BusinessOwnedEntitySchema
 
 
 class WalletSchema(BusinessOwnedEntitySchema):
@@ -28,7 +28,10 @@ class TransactionSchema(BusinessOwnedEntitySchema):
     description: str
     note: str
 
+
 from .models import Participant
+
+
 class ProposalSchema(BusinessOwnedEntitySchema):
     issuer_id: uuid.UUID
     amount: Decimal

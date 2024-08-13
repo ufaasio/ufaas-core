@@ -2,10 +2,11 @@ import uuid
 from datetime import datetime, timezone
 from typing import Any
 
-from sqlalchemy import event
+from sqlalchemy import event, select, JSON
 from sqlalchemy.ext.declarative import as_declarative, declared_attr
 from sqlalchemy.orm import Mapped, declared_attr, mapped_column
 from sqlalchemy.sql import func
+from sqlalchemy.ext.asyncio import AsyncSession
 
 # Base = declarative_base()
 
@@ -21,35 +22,34 @@ class BaseEntity:
         return cls.__name__.lower()
 
     uid: Mapped[uuid.UUID] = mapped_column(
-        # pgUUID(as_uuid=True),
         primary_key=True,
         default=uuid.uuid4,
         unique=True,
         index=True,
     )
     created_at: Mapped[datetime] = mapped_column(
-        # DateTime,
         default=lambda: datetime.now(timezone.utc),
         index=True,
     )
     updated_at: Mapped[datetime] = mapped_column(
         default=lambda: datetime.now(timezone.utc), onupdate=func.now()
     )
-    is_deleted: Mapped[bool] = mapped_column(
-        default=False
-    )  # Column(Boolean, default=False)
-    metadata: Mapped[dict | None] = mapped_column(
-        nullable=True
-    )  # Column(JSON, nullable=True)
+    is_deleted: Mapped[bool] = mapped_column(default=False)
+    meta_info: Mapped[dict | None] = mapped_column(JSON, nullable=True)
     # name: Mapped[str | None] = mapped_column(nullable=True)
 
-    # def __init__(self, **kwargs):
-    #     super().__init__(**kwargs)
-    #     self.uid = uuid.uuid4()
-    #     self.created_at = datetime.now(timezone.utc)
-    #     self.updated_at = datetime.now(timezone.utc)
-    #     self.is_deleted = False
-    #     self.metadata = None
+    @classmethod
+    async def get_item(cls, session: AsyncSession, uid: uuid.UUID, user=None):
+        query = select(cls).filter_by(uid=uid, is_deleted=False)
+
+        # Apply user_id filtering if the model has a user_id attribute
+        if hasattr(cls, "user_id"):
+            query = query.filter_by(user_id=user.id)
+
+        # Execute the query
+        result = await session.execute(query)
+        item = result.scalar_one_or_none()
+        return item
 
 
 Base = BaseEntity

@@ -7,9 +7,8 @@ from core.exceptions import BaseHTTPException
 from fastapi import Depends, Query, Request
 from server.config import Settings
 from server.db import get_db_session
-from sqlalchemy import func
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.future import select
 from usso.fastapi import jwt_access_security
 
 from .handlers import create_dto_business, update_dto_business
@@ -168,6 +167,7 @@ class BusinessRouter(AbstractBaseRouter[Business, BusinessSchema]):
     def __init__(self):
         super().__init__(
             model=Business,
+            schema=BusinessSchema,
             user_dependency=jwt_access_security,
             prefix="/businesses",
         )

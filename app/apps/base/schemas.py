@@ -9,7 +9,7 @@ class CoreEntitySchema(BaseModel):
     created_at: datetime = Field(default_factory=datetime.now, index=True)
     updated_at: datetime = Field(default_factory=datetime.now)
     is_deleted: bool = False
-    metadata: dict[str, Any] | None = None
+    meta_info: dict[str, Any] | None = None
 
 
 class BaseEntitySchema(CoreEntitySchema):

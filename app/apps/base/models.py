@@ -2,11 +2,11 @@ import uuid
 from datetime import datetime, timezone
 from typing import Any
 
-from sqlalchemy import event, select, JSON
+from sqlalchemy import JSON, event, select
+from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.ext.declarative import as_declarative, declared_attr
 from sqlalchemy.orm import Mapped, declared_attr, mapped_column
 from sqlalchemy.sql import func
-from sqlalchemy.ext.asyncio import AsyncSession
 
 # Base = declarative_base()
 
@@ -39,12 +39,24 @@ class BaseEntity:
     # name: Mapped[str | None] = mapped_column(nullable=True)
 
     @classmethod
-    async def get_item(cls, session: AsyncSession, uid: uuid.UUID, user=None):
+    async def get_item(
+        cls,
+        session: AsyncSession,
+        uid: uuid.UUID,
+        user_id: uuid.UUID = None,
+        business_name: str = None,
+    ):
         query = select(cls).filter_by(uid=uid, is_deleted=False)
 
         # Apply user_id filtering if the model has a user_id attribute
         if hasattr(cls, "user_id"):
-            query = query.filter_by(user_id=user.id)
+            if user_id is None:
+                raise ValueError("User is required for this model")
+            query = query.filter_by(user_id=user_id)
+        if hasattr(cls, "business_name"):
+            if business_name is None:
+                raise ValueError("Business name is required for this model")
+            query = query.filter_by(business_name=business_name)
 
         # Execute the query
         result = await session.execute(query)

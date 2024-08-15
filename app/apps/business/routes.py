@@ -44,7 +44,7 @@ class AbstractBusinessBaseRouter(AbstractBaseRouter[T, TS]):
             base_query.append(self.model.user_id == user.uid)
 
         # Query for getting the total count of items
-        total_count_query = select(func.count()).filter(*base_query).subquery()
+        total_count_query = select(func.count()).filter(*base_query)  # .subquery()
 
         # Create the base query for fetching the items
         items_query = (
@@ -53,19 +53,27 @@ class AbstractBusinessBaseRouter(AbstractBaseRouter[T, TS]):
             .order_by(self.model.created_at.desc())
             .offset(offset)
             .limit(limit)
-            .subquery()
+            # .subquery()
         )
 
         # Combine both queries into a single select statement
-        combined_query = select(total_count_query.c[0].label("total"), items_query)
+        combined_query = select(
+            total_count_query.subquery().c[0].label("total"), items_query.subquery()
+        )
 
         # Execute the combined query
-        result = await session.execute(combined_query)
-        rows = result.fetchall()
+        # result = await session.execute(combined_query)
+        # res2 = result.fetchall()
+        # res = result.scalars().all()
+
+        total_result = await session.execute(total_count_query)
+        total = total_result.scalar()
 
         # Extract total count and items
-        total = rows[0]["total"] if rows else 0
-        items = [row[self.model] for row in rows]
+
+        items_result = await session.execute(items_query)
+        rows = items_result.scalars().all()
+        items = [self.schema(**row.__dict__) for row in rows]
 
         return PaginatedResponse(items=items, offset=offset, limit=limit, total=total)
 
@@ -77,26 +85,16 @@ class AbstractBusinessBaseRouter(AbstractBaseRouter[T, TS]):
         session: AsyncSession = Depends(get_db_session),
     ):
         user = await self.get_user(request)
+        user_id = user.uid if user else None
+        item = await self.model.get_item(session, uid, user_id, business.name)
 
-        # Create the base query to get the item by its UID
-        query = select(self.model).filter_by(
-            uid=uid, is_deleted=False, business_name=business.name
-        )
-
-        # Apply user_id filtering if the model has a user_id attribute
-        if hasattr(self.model, "user_id"):
-            query = query.filter_by(user_id=user.uid)
-
-        # Execute the query
-        result = await session.execute(query)
-        item = result.scalar_one_or_none()
         if item is None:
             raise BaseHTTPException(
                 status_code=404,
                 error="item_not_found",
-                message=f"item not found",
+                message=f"{self.model.__name__.capitalize()} not found",
             )
-        return item
+        return self.retrieve_response_schema(**item.__dict__)
 
     async def create_item(
         self,
@@ -105,14 +103,18 @@ class AbstractBusinessBaseRouter(AbstractBaseRouter[T, TS]):
         session: AsyncSession = Depends(get_db_session),
     ):
         user = await self.get_user(request)
-        item = await create_dto_business(self.model)(request, user)
+        item_data = await create_dto_business(self.model)(
+            request, user, business_name=business.name
+        )
+
+        item = self.model(**item_data.model_dump())
 
         # Add the item to the session and commit the transaction
         session.add(item)
         await session.commit()
         await session.refresh(item)
 
-        return item
+        return self.create_response_schema(**item.__dict__)
 
     async def update_item(
         self,
@@ -122,7 +124,8 @@ class AbstractBusinessBaseRouter(AbstractBaseRouter[T, TS]):
         session: AsyncSession = Depends(get_db_session),
     ):
         user = await self.get_user(request)
-        item = await self.retrieve_item(request, uid, business, session)
+        user_id = user.uid if user else None
+        item = await self.model.get_item(session, uid, user_id, business.name)
 
         if not item:
             raise BaseHTTPException(
@@ -131,12 +134,12 @@ class AbstractBusinessBaseRouter(AbstractBaseRouter[T, TS]):
                 message=f"item not found",
             )
 
-        item_data = await update_dto_business(self.model)(request, user, item)
+        item_data = await update_dto_business(self.model)(request, item, user)
         session.add(item_data)
         await session.commit()
         await session.refresh(item_data)
 
-        return item_data
+        return self.update_response_schema(**item_data.__dict__)
 
     async def delete_item(
         self,
@@ -145,8 +148,9 @@ class AbstractBusinessBaseRouter(AbstractBaseRouter[T, TS]):
         business: Business = Depends(get_business),
         session: AsyncSession = Depends(get_db_session),
     ):
-        await self.get_user(request)
-        item = await self.retrieve_item(request, uid, business, session)
+        user = await self.get_user(request)
+        user_id = user.uid if user else None
+        item = await self.model.get_item(session, uid, user_id, business.name)
 
         if not item:
             raise BaseHTTPException(
@@ -160,7 +164,7 @@ class AbstractBusinessBaseRouter(AbstractBaseRouter[T, TS]):
         await session.commit()
         await session.refresh(item)
 
-        return item
+        return self.delete_response_schema(**item.__dict__)
 
 
 class BusinessRouter(AbstractBaseRouter[Business, BusinessSchema]):

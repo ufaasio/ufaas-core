@@ -7,8 +7,8 @@ from fastapi import APIRouter, Depends, Query, Request
 from server.config import Settings
 from server.db import get_db_session
 from sqlalchemy import func
-from sqlalchemy.future import select
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.future import select
 
 from .handlers import create_dto, update_dto
 from .models import BaseEntity
@@ -114,7 +114,7 @@ class AbstractBaseRouter(Generic[T, TS], metaclass=singleton.Singleton):
             base_query.append(self.model.user_id == user.uid)
 
         # Query for getting the total count of items
-        total_count_query = select(func.count()).filter(*base_query) # .subquery()
+        total_count_query = select(func.count()).filter(*base_query)  # .subquery()
 
         # Create the base query for fetching the items
         items_query = (
@@ -132,9 +132,9 @@ class AbstractBaseRouter(Generic[T, TS], metaclass=singleton.Singleton):
         )
 
         # Execute the combined query
-        result = await session.execute(combined_query)
-        res2 = result.fetchall()
-        res = result.scalars().all()
+        # result = await session.execute(combined_query)
+        # res2 = result.fetchall()
+        # res = result.scalars().all()
 
         total_result = await session.execute(total_count_query)
         total = total_result.scalar()
@@ -148,10 +148,14 @@ class AbstractBaseRouter(Generic[T, TS], metaclass=singleton.Singleton):
         return PaginatedResponse(items=items, offset=offset, limit=limit, total=total)
 
     async def retrieve_item(
-        self, request: Request, uid: uuid.UUID, session: AsyncSession = Depends(get_db_session)
+        self,
+        request: Request,
+        uid: uuid.UUID,
+        session: AsyncSession = Depends(get_db_session),
     ):
         user = await self.get_user(request)
-        item = await self.model.get_item(session, uid, user)
+        user_id = user.uid if user else None
+        item = await self.model.get_item(session, uid, user_id)
 
         if item is None:
             raise BaseHTTPException(
@@ -178,7 +182,7 @@ class AbstractBaseRouter(Generic[T, TS], metaclass=singleton.Singleton):
         await session.commit()
         await session.refresh(item)
 
-        return self.create_response_schema(**item_data.__dict__)
+        return self.create_response_schema(**item.__dict__)
 
     async def update_item(
         self,
@@ -188,7 +192,8 @@ class AbstractBaseRouter(Generic[T, TS], metaclass=singleton.Singleton):
         session: AsyncSession = Depends(get_db_session),
     ):
         user = await self.get_user(request)
-        item = await self.model.get_item(session, uid, user)
+        user_id = user.uid if user else None
+        item = await self.model.get_item(session, uid, user_id)
 
         if not item:
             raise BaseHTTPException(
@@ -210,8 +215,9 @@ class AbstractBaseRouter(Generic[T, TS], metaclass=singleton.Singleton):
         uid: uuid.UUID,
         session: AsyncSession = Depends(get_db_session),
     ):
-        await self.get_user(request)
-        item = await self.retrieve_item(request, uid, session)
+        user = await self.get_user(request)
+        user_id = user.uid if user else None
+        item = await self.model.get_item(session, uid, user_id)
 
         if not item:
             raise BaseHTTPException(

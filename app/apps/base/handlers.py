@@ -23,11 +23,11 @@ def update_dto(cls: Type[OT]) -> Callable:
     async def dto(
         request: Request, item: OT, user: Optional[UserData] = None, **kwargs
     ) -> OT:
-        request.path_params["uid"]
+        # request.path_params["uid"]
         form_data = await request.json()
-        kwargs = {}
-        if user:
-            kwargs["user_id"] = user.uid
+        # kwargs = {}
+        # if user:
+        #     kwargs["user_id"] = user.uid
 
         for key, value in form_data.items():
             setattr(item, key, value)

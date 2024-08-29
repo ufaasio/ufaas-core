@@ -2,8 +2,8 @@ from typing import TypeVar
 
 from apps.base.models import BusinessEntity, BusinessOwnedEntity
 from apps.business.models import Business
+from core.exceptions import BaseHTTPException
 from fastapi import Request
-from usso import UserData
 
 from .middlewares import get_business
 
@@ -13,14 +13,15 @@ OT = TypeVar("OT", bound=BusinessOwnedEntity)
 
 def create_dto_business(cls: OT):
 
-    async def dto(request: Request, user: UserData | None = None, **kwargs):
+    async def dto(request: Request, user=None, **kwargs):
         business: Business = await get_business(request)
         form_data: dict = await request.json()
         form_data.update(kwargs)
-        form_data["business_name"] = business.name
-        if form_data.get("user_id") and user.uid == business.user_id:
-            return cls(**form_data)
+        if form_data.get("user_id"):
+            if user.uid == business.user_id:
+                return cls(**form_data, business_name=business.name)
 
+        form_data["business_name"] = business.name
         if user:
             form_data["user_id"] = user.uid
 
@@ -31,15 +32,24 @@ def create_dto_business(cls: OT):
 
 def update_dto_business(cls: OT):
 
-    async def dto(request: Request, item: OT, user=None, **kwargs):
+    async def dto(request: Request, user=None, **kwargs):
+        business: Business = await get_business(request)
+        uid = request.path_params["uid"]
         form_data = await request.json()
         kwargs = {}
         if user:
             kwargs["user_id"] = user.uid
+        item = await cls.get_item(uid, business_name=business.name, **kwargs)
 
-        for key, value in form_data.items():
-            setattr(item, key, value)
+        if not item:
+            raise BaseHTTPException(
+                status_code=404,
+                error="item_not_found",
+                message="Item not found",
+            )
 
-        return item
+        item_data = item.model_dump() | form_data
+
+        return cls(**item_data)
 
     return dto

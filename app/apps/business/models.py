@@ -1,22 +1,48 @@
-from apps.base.models import BaseEntity
-from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.future import select
-from sqlalchemy.orm import Mapped, mapped_column
+import json
+from enum import Enum
 
+from apps.base_mongo.models import OwnedEntity
+from pydantic import BaseModel, model_validator
+from pymongo import ASCENDING, IndexModel
+from server.config import Settings
 
-class Business(BaseEntity):
-    name: Mapped[str] = mapped_column(index=True, unique=True)
-    domain: Mapped[str] = mapped_column(index=True, unique=True)
+class Config(BaseModel):
+    cors_domains: str = ""
+    jwt_secret: dict = json.loads(Settings.JWT_SECRET)
+
+    def __hash__(self):
+        return hash(self.model_dump_json())
+
+class Business(OwnedEntity):
+    name: str
+    description: str | None = None
+    domain: str
+    config: Config
+
+    class Settings:
+        indexes = [
+            IndexModel([("name", ASCENDING)], unique=True),
+            IndexModel([("domain", ASCENDING)], unique=True),
+        ]
+
+    @property
+    def root_url(self):
+        if self.domain.startswith("http"):
+            return self.domain
+        return f"https://{self.domain}"
 
     @classmethod
-    async def get_by_origin(cls, origin: str, session: AsyncSession):
-        domain = origin.split("//")[-1].split("/")[0]
-        result = await session.execute(select(cls).where(cls.domain == domain))
-        business = result.scalars().first()
+    async def get_by_origin(cls, origin: str):
+        return await cls.find_one(cls.domain == origin)
 
-        return business
+    @classmethod
+    async def get_by_name(cls, name: str):
+        return await cls.find_one(cls.name == name)
 
-    # wallets = relationship("Wallet", back_populates="business")
-    # permissions = relationship("Permission", back_populates="business")
-    # proposals = relationship("Proposal", back_populates="business")
-    # transactions = relationship("Transaction", back_populates="business")
+    @model_validator(mode="before")
+    def validate_domain(data: dict):
+        if not data.get("domain"):
+            business_name_domain = f"{data.get('name')}.{Settings.root_url}"
+            data["domain"] = business_name_domain
+
+        return data

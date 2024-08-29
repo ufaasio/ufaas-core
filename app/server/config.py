@@ -31,6 +31,12 @@ class Settings(metaclass=Singleton):
     DATABASE_URL_SYNC: str = os.getenv(
         "DATABASE_URL_SYNC", default="sqlite:///./test.db"
     )
+    mongo_uri: str = os.getenv("MONGO_URI", default="mongodb://localhost:27017")
+
+    JWT_SECRET: str = os.getenv(
+        "USSO_JWT_SECRET",
+        default='{"jwk_url": "https://usso.io/website/jwks.json","type": "RS256","header": {"type": "Cookie", "name": "usso_access_token"} }',
+    )
 
     testing: bool = os.getenv("TESTING", default=False)
 

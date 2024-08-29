@@ -2,15 +2,14 @@ import uuid
 from typing import Any, Generic, Type, TypeVar
 
 import singleton
-from core.exceptions import BaseHTTPException
 from fastapi import APIRouter, Depends, Query, Request
+from sqlalchemy.ext.asyncio import AsyncSession
+
+from core.exceptions import BaseHTTPException
 from server.config import Settings
 from server.db import get_db_session
-from sqlalchemy import func
-from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.future import select
 
-from .handlers import create_dto, update_dto
+from .handlers import create_dto
 from .models import BaseEntity
 from .schemas import BaseEntitySchema, PaginatedResponse
 
@@ -104,14 +103,14 @@ class AbstractBaseRouter(Generic[T, TS], metaclass=singleton.Singleton):
         user = await self.get_user(request)
         limit = max(1, min(limit, Settings.page_max_limit))
 
-        items = [
-            self.schema(**item.__dict__)
-            for item in await self.model.list_items(
-                session, offset=offset, limit=limit, user_id=user.uid
-            )
-        ]
-        total = await self.model.total_count(session, user_id=user.uid)
-        return PaginatedResponse(items=items, offset=offset, limit=limit, total=total)
+        items, total = await self.model.list_total_combined(
+            session, offset=offset, limit=limit, user_id=user.uid
+        )
+
+        items_in_schema = [self.schema(**item.__dict__) for item in items]
+        return PaginatedResponse(
+            items=items_in_schema, offset=offset, limit=limit, total=total
+        )
 
     async def retrieve_item(
         self,

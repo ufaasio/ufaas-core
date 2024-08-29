@@ -3,10 +3,12 @@ from datetime import datetime
 from decimal import Decimal
 from enum import Enum
 
-from apps.base.models import BusinessOwnedEntity, ImmutableBusinessOwnedEntity
 from pydantic import BaseModel
-from sqlalchemy import JSON, ForeignKey
+from sqlalchemy import JSON, ForeignKey, select
+from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import Mapped, mapped_column, relationship
+
+from apps.base.models import BusinessOwnedEntity, ImmutableBusinessOwnedEntity
 
 
 class Wallet(BusinessOwnedEntity):
@@ -44,9 +46,42 @@ class WalletHold(BusinessOwnedEntity):
     amount: Mapped[Decimal]
     expires_at: Mapped[datetime] = mapped_column(index=True)
     status: Mapped[StatusEnum] = mapped_column(index=True)
+    currency: Mapped[str] = mapped_column(index=True)
     # status: Mapped[StatusEnum] = mapped_column(SqlEnum(StatusEnum), index=True)
 
     wallet = relationship("Wallet", back_populates="holds")
+
+    @classmethod
+    async def get_active_holds(
+        cls,
+        session: AsyncSession,
+        user_id: uuid.UUID,
+        business_name: str,
+        wallet_id: uuid.UUID,
+        currency: str,
+        # status: StatusEnum = StatusEnum.ACTIVE,
+    ):
+        base_query = [
+            cls.is_deleted == False,
+            cls.user_id == user_id,
+            cls.business_name == business_name,
+            cls.wallet_id == wallet_id,
+            cls.currency == currency,
+            cls.status == StatusEnum.ACTIVE,
+            cls.expires_at > datetime.now(),
+        ]
+
+        items_query = (
+            select(cls)
+            .filter(*base_query)
+            .order_by(cls.created_at.desc())
+            # .offset(offset)
+            # .limit(limit)
+        )
+
+        items_result = await session.execute(items_query)
+        items = items_result.scalars().all()
+        return items
 
 
 class Transaction(ImmutableBusinessOwnedEntity):

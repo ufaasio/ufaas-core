@@ -122,7 +122,21 @@ class BaseEntity:
         offset: int = 0,
         limit: int = 10,
         is_deleted: bool = False,
-    ):
+    ) -> tuple[list["BaseEntity"], int]:
+        items = await cls.list_items(
+            session,
+            user_id=user_id,
+            business_name=business_name,
+            offset=offset,
+            limit=limit,
+            is_deleted=is_deleted,
+        )
+        total = await cls.total_count(
+            session, user_id=user_id, business_name=business_name, is_deleted=is_deleted
+        )
+        return items, total
+    
+        # TODO Not completed
         base_query = [cls.is_deleted == is_deleted]
 
         if hasattr(cls, "user_id"):
@@ -165,10 +179,10 @@ class BaseEntity:
         for key, value in data.items():
             # if type(value) is dict:
             #     current_value: dict = getattr(item, key)
-                
+
             #     setattr(item, key, current_value | value)
             # else:
-                setattr(item, key, value)
+            setattr(item, key, value)
         session.add(item)
         await session.commit()
         await session.refresh(item)

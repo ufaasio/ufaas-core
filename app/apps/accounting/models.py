@@ -9,6 +9,7 @@ from beanie import BackLink, Link
 from pydantic import BaseModel, Field
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
+from server.db import get_db_session
 from sqlalchemy.orm import Mapped, mapped_column
 
 
@@ -29,12 +30,14 @@ class Wallet(BusinessOwnedEntity):
             base_query.append(Transaction.created_at >= from_date)
             base_query.append(Transaction.created_at <= to_date)
 
+        # session = await get_db_session()
         async with AsyncSession() as session:
             query = select(Transaction).where(*base_query).offset(offset).limit(limit)
             result = await session.execute(query)
             return result.scalars().all()
 
     async def get_balance(self):
+        # session = await get_db_session()
         async with AsyncSession() as session:
             query = (
                 select(Transaction.balance)
@@ -44,6 +47,34 @@ class Wallet(BusinessOwnedEntity):
             )
             result = await session.execute(query)
             return result.scalars().all()
+
+    async def get_held_amount(
+        self,
+        currency: str | None = None,
+        status: "StatusEnum" | None = None,
+        from_date: datetime | None = None,
+        to_date: datetime | None = None,
+    ):
+        pass
+
+    @classmethod
+    async def list_items(
+        cls,
+        user_id: uuid.UUID = None,
+        business_name: str = None,
+        offset: int = 0,
+        limit: int = 10,
+        is_deleted: bool = False,
+        *args,
+        **kwargs,
+    ):
+        items = await cls.find(
+            cls.user_id == user_id,
+            cls.business_name == business_name,
+            cls.is_deleted == False,
+        ).offset(offset).limit(limit).to_list()
+
+        return items
 
     # transactions = relationship("Transaction", back_populates="wallet")
     # holds = relationship("WalletHold", back_populates="wallet")
@@ -80,7 +111,7 @@ class WalletHold(BusinessOwnedEntity):
     wallet: Link[Wallet]
 
     @classmethod
-    async def get_holds(
+    def get_holds_query(
         cls,
         user_id: uuid.UUID,
         business_name: str,
@@ -110,7 +141,30 @@ class WalletHold(BusinessOwnedEntity):
         else:
             base_query.append(cls.expires_at > datetime.now())
 
-        items = await cls.find(*base_query).to_list()
+        return base_query
+
+    @classmethod
+    async def get_holds(
+        cls,
+        user_id: uuid.UUID,
+        business_name: str,
+        wallet_id: uuid.UUID,
+        currency: str | None = None,
+        status: StatusEnum | None = None,
+        from_date: datetime | None = None,
+        to_date: datetime | None = None,
+    ):
+        items = await cls.find(
+            *cls.get_holds_query(
+                user_id=user_id,
+                business_name=business_name,
+                wallet_id=wallet_id,
+                currency=currency,
+                status=status,
+                from_date=from_date,
+                to_date=to_date,
+            )
+        ).to_list()
 
         return items
 
@@ -152,6 +206,7 @@ class Proposal(BusinessOwnedEntity):
     participants: list[Participant]
 
     async def get_transactions(self):
+        # session = await get_db_session()
         async with AsyncSession() as session:
             query = select(Transaction).where(Transaction.proposal_id == self.uid)
             result = await session.execute(query)

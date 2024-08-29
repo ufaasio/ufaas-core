@@ -1,3 +1,4 @@
+import json
 import logging
 import os
 from functools import lru_cache
@@ -7,20 +8,49 @@ from fastapi import Request, WebSocket
 from starlette.status import HTTP_401_UNAUTHORIZED
 from usso.core import UserData
 from usso.exceptions import USSOException
+from pydantic import BaseModel, Field, model_validator
 
 logger = logging.getLogger("usso")
 
 
-class Usso:
-    def __init__(self, jwks_url: str | None = None):
-        if jwks_url is None:
-            jwks_url = os.getenv("USSO_JWKS_URL")
-        self.jwks_url = jwks_url
+class JWTSecret(BaseModel):
+    jwks_url: str | None
+    secret: str | None
+    type: str = "RS256"
+    header: dict[str, str] = {"type": "Cookie", "name": "usso_access_token"}
+
+    @model_validator(mode="before")
+    def validate_secret(data: dict):
+        if not data.get("jwks_url") and not data.get("secret"):
+            raise ValueError("Either jwk_url or secret must be provided")
+        return data
 
     @lru_cache
     @classmethod
     def get_jwks_keys(cls, jwks_url):
         return jwt.PyJWKClient(jwks_url)
+    
+    def decode(self, token: str):
+        if self.jwks_url:
+            jwks_client = self.get_jwks_keys(self.jwks_url)
+            signing_key = jwks_client.get_signing_key_from_jwt(token)
+            return jwt.decode(token, signing_key.key, algorithms=[self.type])
+
+        return jwt.decode(token, self.secret, algorithms=[self.type])
+
+
+class Usso:
+    def __init__(self, jwt_secret: str | dict | JWTSecret | None = None):
+        if jwt_secret is None:
+            self.jwks_url = os.getenv("USSO_JWKS_URL")
+            return
+        
+        if isinstance(jwt_secret, str):
+            jwt_secret = json.loads(jwt_secret)
+        if isinstance(jwt_secret, dict):
+            jwt_secret = JWTSecret(**jwt_secret)
+        
+        self.jwks_url = jwt_secret
 
     def get_authorization_scheme_param(
         self,
@@ -34,15 +64,7 @@ class Usso:
     def user_data_from_token(self, token: str, **kwargs) -> UserData | None:
         """Return the user associated with a token value."""
         try:
-            # header = jwt.get_unverified_header(token)
-            # jwks_url = header["jwk_url"]
-            jwks_client = self.get_jwks_keys(self.jwks_url)
-            signing_key = jwks_client.get_signing_key_from_jwt(token)
-            decoded = jwt.decode(
-                token,
-                signing_key.key,
-                algorithms=["RS256"],
-            )
+            decoded = self.jwks_url.decode(token)
             if decoded["token_type"] != "access":
                 raise USSOException(
                     status_code=401,
@@ -79,6 +101,13 @@ class Usso:
                 raise USSOException(
                     status_code=401,
                     error="invalid_key",
+                )
+        except KeyError as e:
+            if kwargs.get("raise_exception", True):
+                raise USSOException(
+                    status_code=401,
+                    error="key_error",
+                    message=str(e),
                 )
         except USSOException as e:
             if kwargs.get("raise_exception", True):

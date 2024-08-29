@@ -4,11 +4,12 @@ from typing import Any
 from apps.base.schemas import BaseEntitySchema
 from pydantic import BaseModel, model_validator
 from server.config import Settings
+from apps.base.auth import JWTSecret
 
 
 class Config(BaseModel):
     cors_domains: str = ""
-    jwt_secret: dict = json.loads(Settings.JWT_SECRET)
+    jwt_secret: JWTSecret = JWTSecret(**json.loads(Settings.JWT_SECRET))
 
     def __hash__(self):
         return hash(self.model_dump_json())

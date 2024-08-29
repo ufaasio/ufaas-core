@@ -1,6 +1,8 @@
 import uuid
 from datetime import datetime
 from decimal import Decimal
+from typing import Any
+from pydantic import BaseModel
 
 from apps.base.schemas import BusinessOwnedEntitySchema
 
@@ -10,6 +12,15 @@ class WalletSchema(BusinessOwnedEntitySchema):
     held_amount: Decimal
     # transactions: list[TransactionSchema] = []
     # proposals: list[ProposalSchema] = []
+
+
+class WalletCreateSchema(BaseModel):
+    user_id: uuid.UUID
+    meta_data: dict[str, Any] | None = None
+
+
+class WalletUpdateSchema(BaseModel):
+    meta_data: dict[str, Any] | None = None
 
 
 class WalletHoldSchema(BusinessOwnedEntitySchema):

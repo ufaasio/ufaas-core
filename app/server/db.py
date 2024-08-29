@@ -9,7 +9,8 @@ from apps.accounting import models as accounting_models
 from apps.applications import models as applications_models
 from apps.base.models import Base
 from apps.base_mongo import models as base_mongo_models
-from apps.business_sql import models as business_models
+
+# from apps.business import models as business_models
 from beanie import init_beanie
 from motor.motor_asyncio import AsyncIOMotorClient
 from utils.basic import get_all_subclasses
@@ -28,5 +29,7 @@ async def init_db():
 
     client = AsyncIOMotorClient(Settings.mongo_uri)
     db = client.get_database(Settings.project_name)
-    await init_beanie(database=db, document_models=get_all_subclasses(base_mongo_models.BaseEntity))
+    await init_beanie(
+        database=db, document_models=get_all_subclasses(base_mongo_models.BaseEntity)
+    )
     return db

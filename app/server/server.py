@@ -4,13 +4,12 @@ from contextlib import asynccontextmanager
 
 import fastapi
 import pydantic
+from core import exceptions
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from json_advanced import dumps
-from usso.exceptions import USSOException
-
-from core import exceptions
 from server import config, db
+from usso.exceptions import USSOException
 
 
 @asynccontextmanager
@@ -108,7 +107,7 @@ from apps.accounting.routes import (
     wallet_router,
 )
 from apps.applications.routes import router as application_router
-from apps.business.routes import router as business_router
+from apps.business_mongo.routes import router as business_router
 
 app.include_router(business_router, prefix="/api/v1")
 app.include_router(wallet_router, prefix="/api/v1")

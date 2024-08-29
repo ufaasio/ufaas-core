@@ -1,21 +1,30 @@
 import uuid
 
-from sqlalchemy import ForeignKey
-from sqlalchemy.orm import Mapped, mapped_column, relationship
-
-from apps.base.models import BaseEntity, BusinessEntity
+from apps.base_mongo.models import BaseEntity, BusinessEntity
+from pymongo import ASCENDING, IndexModel
 
 
 class Application(BaseEntity):
-    name: Mapped[str] = mapped_column(index=True)
-    domain: Mapped[str] = mapped_column(index=True)
+    name: str
+    domain: str
 
-    permissions = relationship("Permission", back_populates="application")
+    class Settings:
+        indexes = [
+            IndexModel([("name", ASCENDING)], unique=True),
+            IndexModel([("domain", ASCENDING)], unique=True),
+        ]
+
+    # permissions = relationship("Permission", back_populates="application")
 
 
 class Permission(BusinessEntity):
-    app_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("application.uid"), index=True)
-    write_access: Mapped[bool] = mapped_column(default=False)
+    app_id: uuid.UUID
+    write_access: bool = False
+
+    class Settings:
+        indexes = [
+            IndexModel([("app_id", ASCENDING), ("user_id", ASCENDING)], unique=True),
+        ]
 
     # business = relationship("Business", back_populates="permissions")
-    application = relationship("Application", back_populates="permissions")
+    # application = relationship("Application", back_populates="permissions")

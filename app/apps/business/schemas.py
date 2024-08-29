@@ -1,14 +1,25 @@
+import json
 from typing import Any
 
-from pydantic import BaseModel, model_validator
-
 from apps.base.schemas import BaseEntitySchema
+from pydantic import BaseModel, model_validator
 from server.config import Settings
+
+
+class Config(BaseModel):
+    cors_domains: str = ""
+    jwt_secret: dict = json.loads(Settings.JWT_SECRET)
+
+    def __hash__(self):
+        return hash(self.model_dump_json())
 
 
 class BusinessSchema(BaseEntitySchema):
     name: str
     domain: str
+    
+    description: str | None = None
+    config: Config = Config()
 
 
 class BusinessDataCreateSchema(BaseModel):
@@ -16,6 +27,8 @@ class BusinessDataCreateSchema(BaseModel):
     domain: str | None = None
 
     meta_data: dict[str, Any] | None = None
+    description: str | None = None
+    config: Config = Config()
 
     @model_validator(mode="before")
     def validate_domain(data: dict):
@@ -30,3 +43,5 @@ class BusinessDataUpdateSchema(BaseModel):
     name: str | None = None
     domain: str | None = None
     meta_data: dict[str, Any] | None = None
+    description: str | None = None
+    config: Config | None = None

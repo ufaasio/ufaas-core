@@ -1,16 +1,16 @@
 services:
-  db:
-    image: timescale/timescaledb:latest-pg16
-    # image: postgres
-    restart: unless-stopped
-    environment:
-      - POSTGRES_USER=${POSTGRES_USER}
-      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
-      - POSTGRES_DB=${POSTGRES_DB}
-    volumes:
-      - ./db.data:/var/lib/postgresql/data
-    networks:
-      - data
+  # db:
+  #   image: timescale/timescaledb:latest-pg16
+  #   # image: postgres
+  #   restart: unless-stopped
+  #   environment:
+  #     - POSTGRES_USER=${POSTGRES_USER}
+  #     - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+  #     - POSTGRES_DB=${POSTGRES_DB}
+  #   volumes:
+  #     - ./db.data:/var/lib/postgresql/data
+  #   networks:
+  #     - data
 
   app:
     build: app
@@ -29,6 +29,7 @@ services:
     networks:
       - data
       - traefik-net
+      - mongo-net
     labels:
       - "traefik.enable=true"
       - "traefik.http.routers.${PROJECT_NAME}.entrypoints=web"
@@ -45,3 +46,5 @@ networks:
   traefik-net:
     external: true
   data:
+  mongo-net:
+    external: true

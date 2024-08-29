@@ -3,36 +3,65 @@ from datetime import datetime
 from decimal import Decimal
 from enum import Enum
 
-from pydantic import BaseModel
-from sqlalchemy import JSON, ForeignKey, select
+from apps.base.models import ImmutableBusinessOwnedEntity
+from apps.base_mongo.models import BusinessOwnedEntity
+from beanie import BackLink, Link
+from pydantic import BaseModel, Field
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.orm import Mapped, mapped_column, relationship
-
-from apps.base.models import BusinessOwnedEntity, ImmutableBusinessOwnedEntity
+from sqlalchemy.orm import Mapped, mapped_column
 
 
 class Wallet(BusinessOwnedEntity):
-    # currency: Mapped[str] = mapped_column(index=True)
-    # balance = Column(Float, default=0.0)
+    holds: BackLink["WalletHold"] = Field(original_field="wallet")
 
-    transactions = relationship("Transaction", back_populates="wallet")
-    holds = relationship("WalletHold", back_populates="wallet")
-    # participants = relationship("Participant", back_populates="wallet")
+    async def get_transactions(
+        self,
+        from_date: datetime | None = None,
+        to_date: datetime | None = None,
+        offset: int = 0,
+        limit: int = 20,
+    ):
+        base_query = [Transaction.wallet_id == self.uid]
+        if to_date is None:
+            to_date = datetime.now()
+        if from_date and to_date:
+            base_query.append(Transaction.created_at >= from_date)
+            base_query.append(Transaction.created_at <= to_date)
 
-    @property
-    def balance(self) -> Decimal:
-        latest_transaction: Transaction = (
-            self.transactions[-1] if self.transactions else None
-        )
-        return latest_transaction.balance if latest_transaction else Decimal(0)
+        async with AsyncSession() as session:
+            query = select(Transaction).where(*base_query).offset(offset).limit(limit)
+            result = await session.execute(query)
+            return result.scalars().all()
 
-    @property
-    def held_amount(self) -> Decimal:
-        return sum(
-            hold.amount
-            for hold in self.holds
-            if hold.status == "active" and hold.expires_at > datetime.now()
-        )
+    async def get_balance(self):
+        async with AsyncSession() as session:
+            query = (
+                select(Transaction.balance)
+                .where(Transaction.wallet_id == self.uid)
+                .order_by(Transaction.created_at.desc())
+                .limit(1)
+            )
+            result = await session.execute(query)
+            return result.scalars().all()
+
+    # transactions = relationship("Transaction", back_populates="wallet")
+    # holds = relationship("WalletHold", back_populates="wallet")
+
+    # @property
+    # def balance(self) -> Decimal:
+    #     latest_transaction: Transaction = (
+    #         self.transactions[-1] if self.transactions else None
+    #     )
+    #     return latest_transaction.balance if latest_transaction else Decimal(0)
+
+    # @property
+    # def held_amount(self) -> Decimal:
+    #     return sum(
+    #         hold.amount
+    #         for hold in self.holds
+    #         if hold.status == "active" and hold.expires_at > datetime.now()
+    #     )
 
 
 class StatusEnum(str, Enum):
@@ -42,74 +71,69 @@ class StatusEnum(str, Enum):
 
 
 class WalletHold(BusinessOwnedEntity):
-    wallet_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("wallet.uid"), index=True)
-    amount: Mapped[Decimal]
-    expires_at: Mapped[datetime] = mapped_column(index=True)
-    status: Mapped[StatusEnum] = mapped_column(index=True)
-    currency: Mapped[str] = mapped_column(index=True)
-    # status: Mapped[StatusEnum] = mapped_column(SqlEnum(StatusEnum), index=True)
-
-    wallet = relationship("Wallet", back_populates="holds")
+    wallet_id: uuid.UUID
+    amount: Decimal
+    expires_at: datetime
+    status: StatusEnum
+    currency: str
+    description: str | None
+    wallet: Link[Wallet]
 
     @classmethod
-    async def get_active_holds(
+    async def get_holds(
         cls,
-        session: AsyncSession,
         user_id: uuid.UUID,
         business_name: str,
         wallet_id: uuid.UUID,
-        currency: str,
-        # status: StatusEnum = StatusEnum.ACTIVE,
+        currency: str | None = None,
+        status: StatusEnum | None = None,
+        from_date: datetime | None = None,
+        to_date: datetime | None = None,
     ):
         base_query = [
             cls.is_deleted == False,
             cls.user_id == user_id,
             cls.business_name == business_name,
             cls.wallet_id == wallet_id,
-            cls.currency == currency,
-            cls.status == StatusEnum.ACTIVE,
-            cls.expires_at > datetime.now(),
         ]
+        if currency:
+            base_query.append(cls.currency == currency)
 
-        items_query = (
-            select(cls)
-            .filter(*base_query)
-            .order_by(cls.created_at.desc())
-            # .offset(offset)
-            # .limit(limit)
-        )
+        if status:
+            base_query.append(cls.status == status)
 
-        items_result = await session.execute(items_query)
-        items = items_result.scalars().all()
+        if to_date is None:
+            to_date = datetime.now()
+        if from_date and to_date:
+            base_query.append(cls.created_at >= from_date)
+            base_query.append(cls.created_at <= to_date)
+        else:
+            base_query.append(cls.expires_at > datetime.now())
+
+        items = await cls.find(*base_query).to_list()
+
         return items
 
 
 class Transaction(ImmutableBusinessOwnedEntity):
-    proposal_id: Mapped[uuid.UUID] = mapped_column(
-        ForeignKey("proposal.uid"), index=True
-    )
-    wallet_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("wallet.uid"), index=True)
+    proposal_id: Mapped[uuid.UUID] = mapped_column(index=True)
+    wallet_id: Mapped[uuid.UUID] = mapped_column(index=True)
     amount: Mapped[Decimal] = mapped_column(onupdate=None)
     currency: Mapped[str] = mapped_column(index=True)
     balance: Mapped[Decimal]
     description: Mapped[str | None]
 
-    wallet = relationship("Wallet", back_populates="transactions")
-    # business = relationship("Business", back_populates="transactions")
-    proposal = relationship("Proposal", back_populates="transactions")
-    notes = relationship("TransactionNote", back_populates="transaction")
-
-    @property
-    def note(self) -> Decimal:
-        return self.notes[-1].note if self.notes else None
+    async def note(self) -> str:
+        query = TransactionNote.find(TransactionNote.transaction_id == self.uid).sort(
+            "-created_at"
+        )
+        note = await query.to_list()
+        return note[0].note if note else None
 
 
 class TransactionNote(BusinessOwnedEntity):
-    transaction_id: Mapped[uuid.UUID] = mapped_column(
-        ForeignKey("transaction.uid"), index=True
-    )
-    note: Mapped[str]
-    transaction = relationship("Transaction", back_populates="notes")
+    transaction_id: uuid.UUID
+    note: str
 
 
 class Participant(BaseModel):
@@ -117,32 +141,18 @@ class Participant(BaseModel):
     amount: Decimal
     wallet_id: uuid.UUID
 
-    # participant_id: Mapped[uuid.UUID] = mapped_column(index=True)
-    # amount: Mapped[Decimal]
-    # wallet_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("wallet.uid"), index=True)
-
-    # wallet = relationship("Wallet", back_populates="participants")
-
 
 class Proposal(BusinessOwnedEntity):
-    issuer_id: Mapped[uuid.UUID] = mapped_column(index=True)
-    amount: Mapped[Decimal] = mapped_column(onupdate=None)
-    description: Mapped[str | None]
-    note: Mapped[str | None]
-    status: Mapped[str | None] = mapped_column(index=True)
+    issuer_id: uuid.UUID
+    amount: Decimal
+    description: str | None
+    note: str | None
+    status: str | None
 
-    # sources: Mapped[list[Participant]] = mapped_column(JSON)
-    # recipients: Mapped[list[Participant]] = mapped_column(JSON)
-    participants: Mapped[list[Participant]] = mapped_column(JSON)
+    participants: list[Participant]
 
-    # business = relationship("Business", back_populates="proposals")
-    transactions = relationship("Transaction", back_populates="proposal")
-
-    # sources = relationship(
-    #     "Participant", secondary="proposal_sources", backref=backref("source_proposals")
-    # )
-    # recipients = relationship(
-    #     "Participant",
-    #     secondary="proposal_recipients",
-    #     backref=backref("recipient_proposals"),
-    # )
+    async def get_transactions(self):
+        async with AsyncSession() as session:
+            query = select(Transaction).where(Transaction.proposal_id == self.uid)
+            result = await session.execute(query)
+            return result.scalars().all()

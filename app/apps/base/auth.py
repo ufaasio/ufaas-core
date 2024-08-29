@@ -11,7 +11,7 @@ from usso.exceptions import USSOException
 logger = logging.getLogger("usso")
 
 
-class Usso():
+class Usso:
     def __init__(self, jwks_url: str | None = None):
         if jwks_url is None:
             jwks_url = os.getenv("USSO_JWKS_URL")
@@ -24,7 +24,7 @@ class Usso():
 
     def get_authorization_scheme_param(
         self,
-        authorization_header_value: str|None,
+        authorization_header_value: str | None,
     ) -> tuple[str, str]:
         if not authorization_header_value:
             return "", ""

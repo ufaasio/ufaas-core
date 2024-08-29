@@ -46,6 +46,8 @@ class BaseEntity:
         user_id: uuid.UUID = None,
         business_name: str = None,
         is_deleted: bool = False,
+        *args,
+        **kwargs,
     ):
         base_query = [cls.is_deleted == is_deleted, cls.uid == uid]
 
@@ -68,6 +70,8 @@ class BaseEntity:
         offset: int = 0,
         limit: int = 10,
         is_deleted: bool = False,
+        *args,
+        **kwargs,
     ):
         base_query = [cls.is_deleted == is_deleted]
 
@@ -135,7 +139,7 @@ class BaseEntity:
             session, user_id=user_id, business_name=business_name, is_deleted=is_deleted
         )
         return items, total
-    
+
         # TODO Not completed
         base_query = [cls.is_deleted == is_deleted]
 

@@ -2,12 +2,11 @@ import uuid
 from typing import Any, Generic, Type, TypeVar
 
 import singleton
-from fastapi import APIRouter, Depends, Query, Request
-from sqlalchemy.ext.asyncio import AsyncSession
-
 from core.exceptions import BaseHTTPException
+from fastapi import APIRouter, Depends, Query, Request
 from server.config import Settings
 from server.db import get_db_session
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from .handlers import create_dto
 from .models import BaseEntity
@@ -43,6 +42,7 @@ class AbstractBaseRouter(Generic[T, TS], metaclass=singleton.Singleton):
     @classmethod
     def config_schemas(cls, schema, **kwargs):
         cls.list_response_schema = PaginatedResponse[schema]
+        cls.list_item_schema = schema
         cls.retrieve_response_schema = schema
         cls.create_response_schema = schema
         cls.update_response_schema = schema
@@ -104,10 +104,10 @@ class AbstractBaseRouter(Generic[T, TS], metaclass=singleton.Singleton):
         limit = max(1, min(limit, Settings.page_max_limit))
 
         items, total = await self.model.list_total_combined(
-            session, offset=offset, limit=limit, user_id=user.uid
+            session, offset=offset, limit=limit, user_id=user.uid if user else None
         )
 
-        items_in_schema = [self.schema(**item.__dict__) for item in items]
+        items_in_schema = [self.list_item_schema(**item.__dict__) for item in items]
         return PaginatedResponse(
             items=items_in_schema, offset=offset, limit=limit, total=total
         )
@@ -137,7 +137,7 @@ class AbstractBaseRouter(Generic[T, TS], metaclass=singleton.Singleton):
         session: AsyncSession = Depends(get_db_session),
     ):
         user = await self.get_user(request)
-        item_data = await create_dto(self.schema)(request, user)
+        item_data: TS = await create_dto(self.create_request_schema)(request, user)
         item = await self.model.create_item(session, item_data.model_dump())
         return self.create_response_schema(**item.__dict__)
 

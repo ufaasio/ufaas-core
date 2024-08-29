@@ -1,11 +1,10 @@
 import aiohttp
-from fastapi import Request, Response
-from usso.fastapi import jwt_access_security
-
 from apps.business.middlewares import get_business
 from apps.business.models import Business
 from apps.business.routes import AbstractBusinessBaseRouter
 from core import exceptions
+from fastapi import Request, Response
+from usso.fastapi import jwt_access_security
 
 from .models import Application
 from .schemas import AppSchema
@@ -17,7 +16,7 @@ class ApplicationRouter(AbstractBusinessBaseRouter[Application, AppSchema]):
             model=Application,
             user_dependency=jwt_access_security,
             prefix="/apps",
-            tags=["applications"],
+            # tags=["Applications"],
         )
 
 

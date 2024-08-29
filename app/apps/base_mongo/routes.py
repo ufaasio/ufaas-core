@@ -1,20 +1,23 @@
+import uuid
 from typing import Any, Generic, Type, TypeVar
 
 import singleton
+from apps.base.schemas import BaseEntitySchema, PaginatedResponse
 from core.exceptions import BaseHTTPException
 from fastapi import APIRouter, BackgroundTasks, Query, Request
 from server.config import Settings
 
-from .handlers import create_dto, update_dto
+from .handlers import create_dto
 from .models import BaseEntity, BaseEntityTaskMixin
-from .schemas import PaginatedResponse
 
 # Define a type variable
 T = TypeVar("T", bound=BaseEntity)
 TE = TypeVar("TE", bound=BaseEntityTaskMixin)
+TS = TypeVar("TS", bound=BaseEntitySchema)
 
 
-class AbstractBaseRouter(Generic[T], metaclass=singleton.Singleton):
+class AbstractBaseRouter(Generic[T, TS], metaclass=singleton.Singleton):
+
     def __init__(
         self,
         model: Type[T],
@@ -22,9 +25,13 @@ class AbstractBaseRouter(Generic[T], metaclass=singleton.Singleton):
         *args,
         prefix: str = None,
         tags: list[str] = None,
+        schema: Type[TS] = None,
         **kwargs,
     ):
         self.model = model
+        if schema is None:
+            schema = self.model
+        self.schema = schema
         self.user_dependency = user_dependency
         if prefix is None:
             prefix = f"/{self.model.__name__.lower()}s"
@@ -32,18 +39,20 @@ class AbstractBaseRouter(Generic[T], metaclass=singleton.Singleton):
             tags = [self.model.__name__]
         self.router = APIRouter(prefix=prefix, tags=tags, **kwargs)
 
-        self.config_schemas(**kwargs)
+        self.config_schemas(self.schema, **kwargs)
         self.config_routes(**kwargs)
 
-    def config_schemas(self, **kwargs):
-        self.list_response_schema = PaginatedResponse[self.model]
-        self.retrieve_response_schema = self.model
-        self.create_response_schema = self.model
-        self.update_response_schema = self.model
-        self.delete_response_schema = self.model
+    @classmethod
+    def config_schemas(cls, schema, **kwargs):
+        cls.list_response_schema = PaginatedResponse[schema]
+        cls.list_item_schema = schema
+        cls.retrieve_response_schema = schema
+        cls.create_response_schema = schema
+        cls.update_response_schema = schema
+        cls.delete_response_schema = schema
 
-        self.create_request_schema = self.model
-        self.update_request_schema = self.model
+        cls.create_request_schema = schema
+        cls.update_request_schema = schema
 
     def config_routes(self, **kwargs):
         self.router.add_api_route(
@@ -94,18 +103,16 @@ class AbstractBaseRouter(Generic[T], metaclass=singleton.Singleton):
         limit: int = Query(10, ge=1, le=Settings.page_max_limit),
     ):
         user = await self.get_user(request)
+        limit = max(1, min(limit, Settings.page_max_limit))
 
-        items_query = (
-            self.model.get_query(user=user)
-            .sort("-created_at")
-            .skip(offset)
-            .limit(limit)
+        items, total = await self.model.list_total_combined(
+            user_id=user.uid if user else None, offset=offset, limit=limit
         )
-        items = await items_query.to_list()
-        total_items = await self.model.get_query(user=user).count()
+        items_in_schema = [self.list_item_schema(**item.model_dump()) for item in items]
+
         return PaginatedResponse(
-            items=items,
-            total=total_items,
+            items=items_in_schema,
+            total=total,
             offset=offset,
             limit=limit,
         )
@@ -113,10 +120,11 @@ class AbstractBaseRouter(Generic[T], metaclass=singleton.Singleton):
     async def retrieve_item(
         self,
         request: Request,
-        uid,
+        uid: uuid.UUID,
     ):
         user = await self.get_user(request)
-        item = await self.model.get_item(uid, user)
+        user_id = user.uid if user else None
+        item = await self.model.get_item(uid, user_id=user_id)
         if item is None:
             raise BaseHTTPException(
                 status_code=404,
@@ -128,50 +136,60 @@ class AbstractBaseRouter(Generic[T], metaclass=singleton.Singleton):
     async def create_item(
         self,
         request: Request,
+        data: dict,
     ):
         user = await self.get_user(request)
-        item = await create_dto(self.model)(request, user)
-
+        # item_data: TS = await create_dto(self.create_request_schema)(request, user)
+        # item = await self.model.create_item(item_data.model_dump())
+        item: T = await create_dto(self.model)(request, user)
         await item.save()
         return item
 
     async def update_item(
         self,
         request: Request,
-        uid,
+        uid: uuid.UUID,
+        data: dict,
     ):
         user = await self.get_user(request)
-        item = await update_dto(self.model)(request, user)
+        user_id = user.uid if user else None
+        item = await self.model.get_item(uid, user_id=user_id)
+
         if item is None:
             raise BaseHTTPException(
                 status_code=404,
                 error="item_not_found",
                 message=f"{self.model.__name__.capitalize()} not found",
             )
-        await item.save()
+        # item = await update_dto(self.model)(request, user)
+        item = await self.model.update_item(item, data)
         return item
 
     async def delete_item(
         self,
         request: Request,
-        uid,
+        uid: uuid.UUID,
     ):
         user = await self.get_user(request)
-        item = await self.model.get_item(uid, user)
-        if item is None:
+        user_id = user.uid if user else None
+        item = await self.model.get_item(uid, user_id=user_id)
+
+        if not item:
             raise BaseHTTPException(
                 status_code=404,
                 error="item_not_found",
                 message=f"{self.model.__name__.capitalize()} not found",
             )
-        item.is_deleted = True
-        await item.save()
+
+        item = await self.model.delete_item(item)
         return item
 
 
-class AbstractTaskRouter(AbstractBaseRouter[TE]):
-    def __init__(self, model: Type[TE], user_dependency: Any, *args, **kwargs):
-        super().__init__(model, user_dependency, *args, **kwargs)
+class AbstractTaskRouter(AbstractBaseRouter[TE, TS]):
+    def __init__(
+        self, model: Type[TE], user_dependency: Any, schema: TS, *args, **kwargs
+    ):
+        super().__init__(model, user_dependency, schema=schema, *args, **kwargs)
         self.router.add_api_route(
             "/{uid:uuid}/start",
             self.start,
@@ -179,9 +197,12 @@ class AbstractTaskRouter(AbstractBaseRouter[TE]):
             response_model=self.model,
         )
 
-    async def start(self, request: Request, uid, background_tasks: BackgroundTasks):
+    async def start(
+        self, request: Request, uid: uuid.UUID, background_tasks: BackgroundTasks
+    ):
         user = await self.get_user(request)
-        item = await self.model.get_item(uid, user)
+        user_id = user.uid if user else None
+        item: TE = await self.model.get_item(uid, user_id=user_id)
         if item is None:
             raise BaseHTTPException(
                 status_code=404,

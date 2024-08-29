@@ -1,13 +1,12 @@
-from fastapi import Depends, Query, Request
-from sqlalchemy.ext.asyncio import AsyncSession
-from usso.fastapi import jwt_access_security
-
 from apps.base.schemas import PaginatedResponse
 from apps.business.middlewares import get_business
 from apps.business.models import Business
 from apps.business.routes import AbstractBusinessBaseRouter
+from fastapi import Depends, Query, Request
 from server.config import Settings
 from server.db import get_db_session
+from sqlalchemy.ext.asyncio import AsyncSession
+from usso.fastapi import jwt_access_security
 
 from .models import Proposal, Transaction, Wallet, WalletHold
 from .schemas import ProposalSchema, TransactionSchema, WalletHoldSchema, WalletSchema
@@ -19,7 +18,7 @@ class WalletRouter(AbstractBusinessBaseRouter[Wallet, WalletSchema]):
             model=Wallet,
             user_dependency=jwt_access_security,
             # prefix="/wallets",
-            tags=["accounting"],
+            tags=["Accounting"],
         )
 
     def config_routes(self, **kwargs):
@@ -78,7 +77,7 @@ class WalletHoldRouter(AbstractBusinessBaseRouter[WalletHold, WalletHoldSchema])
             model=WalletHold,
             user_dependency=jwt_access_security,
             prefix="/wallet-holds",
-            tags=["accounting"],
+            tags=["Accounting"],
         )
 
     def config_routes(self, **kwargs):
@@ -118,7 +117,7 @@ class TransactionRouter(AbstractBusinessBaseRouter[Transaction, TransactionSchem
             model=Transaction,
             user_dependency=jwt_access_security,
             # prefix="/transactions",
-            tags=["accounting"],
+            tags=["Accounting"],
         )
 
     def config_routes(self, **kwargs):
@@ -144,7 +143,7 @@ class ProposalRouter(AbstractBusinessBaseRouter[Proposal, ProposalSchema]):
             model=Proposal,
             user_dependency=jwt_access_security,
             # prefix="/proposal",
-            tags=["accounting"],
+            tags=["Accounting"],
         )
 
     def config_routes(self, **kwargs):

@@ -4,11 +4,10 @@ import uuid
 from datetime import datetime
 from typing import Any, Callable, Coroutine, Literal, Union
 
+from apps.base.schemas import BaseEntitySchema
 from pydantic import BaseModel, Field
 from singleton import Singleton
 from utils import aionetwork, basic
-
-from .schemas import BaseEntitySchema
 
 
 class SignalRegistry(metaclass=Singleton):

@@ -1,121 +1,152 @@
+import uuid
 from typing import TypeVar
 
 from apps.base.models import BusinessEntity
 from apps.base.routes import AbstractBaseRouter
-from apps.base.schemas import PaginatedResponse
-from apps.business.handlers import create_dto_business, update_dto_business
+from apps.base.schemas import BusinessEntitySchema, PaginatedResponse
 from core.exceptions import BaseHTTPException
-from fastapi import Depends, Request
+from fastapi import Depends, Query, Request
 from server.config import Settings
+from server.db import get_db_session
+from sqlalchemy.ext.asyncio import AsyncSession
 from usso.fastapi import jwt_access_security
 
+from .handlers import create_dto_business
 from .middlewares import get_business
 from .models import Business
+from .schemas import BusinessDataCreateSchema, BusinessDataUpdateSchema, BusinessSchema
 
 T = TypeVar("T", bound=BusinessEntity)
+TS = TypeVar("TS", bound=BusinessEntitySchema)
 
 
-class AbstractBusinessBaseRouter(AbstractBaseRouter[T]):
+class AbstractBusinessBaseRouter(AbstractBaseRouter[T, TS]):
+
     async def list_items(
         self,
         request: Request,
-        offset: int = 0,
-        limit: int = 10,
+        offset: int = Query(0, ge=0),
+        limit: int = Query(10, ge=0, le=Settings.page_max_limit),
         business: Business = Depends(get_business),
+        session: AsyncSession = Depends(get_db_session),
     ):
         user = await self.get_user(request)
         limit = max(1, min(limit, Settings.page_max_limit))
 
-        items_query = (
-            self.model.get_query(business_name=business.name, user_id=user.uid)
-            .sort("-created_at")
-            .skip(offset)
-            .limit(limit)
-        )
-        items = await items_query.to_list()
-        total_items = await self.model.get_query(
-            business_name=business.name, user=user
-        ).count()
-        return PaginatedResponse(
-            items=items,
-            total=total_items,
+        items, total = await self.model.list_total_combined(
+            session,
             offset=offset,
             limit=limit,
+            user_id=user.uid,
+            business_name=business.name,
+        )
+        items_in_schema = [self.schema(**item.__dict__) for item in items]
+        return PaginatedResponse(
+            items=items_in_schema, offset=offset, limit=limit, total=total
         )
 
     async def retrieve_item(
         self,
         request: Request,
-        uid,
+        uid: uuid.UUID,
         business: Business = Depends(get_business),
+        session: AsyncSession = Depends(get_db_session),
     ):
         user = await self.get_user(request)
-        item = await self.model.get_item(
-            uid, business_name=business.name, user_id=user.uid
-        )
+        user_id = user.uid if user else None
+        item = await self.model.get_item(session, uid, user_id, business.name)
+
         if item is None:
             raise BaseHTTPException(
                 status_code=404,
                 error="item_not_found",
                 message=f"{self.model.__name__.capitalize()} not found",
             )
-        return item
+        return self.retrieve_response_schema(**item.__dict__)
 
     async def create_item(
         self,
         request: Request,
-        # business: Business = Depends(get_business),
+        business: Business = Depends(get_business),
+        session: AsyncSession = Depends(get_db_session),
     ):
         user = await self.get_user(request)
-        item = await create_dto_business(self.model)(request, user)
-
-        await item.save()
-        return item
+        item_data = await create_dto_business(self.model)(
+            request, user, business_name=business.name
+        )
+        item = await self.model.create_item(session, item_data.model_dump())
+        return self.create_response_schema(**item.__dict__)
 
     async def update_item(
         self,
         request: Request,
-        uid,
-        # business: Business = Depends(get_business),
+        uid: uuid.UUID,
+        data: dict,
+        business: Business = Depends(get_business),
+        session: AsyncSession = Depends(get_db_session),
     ):
         user = await self.get_user(request)
-        item = await update_dto_business(self.model)(request, user)
-        if item is None:
+        user_id = user.uid if user else None
+        item = await self.model.get_item(session, uid, user_id, business.name)
+
+        if not item:
             raise BaseHTTPException(
                 status_code=404,
                 error="item_not_found",
-                message=f"{self.model.__name__.capitalize()} not found",
+                message=f"item not found",
             )
-        await item.save()
-        return item
+
+        item = await self.model.update_item(session, item, data)
+        return self.update_response_schema(**item.__dict__)
 
     async def delete_item(
         self,
         request: Request,
-        uid,
+        uid: uuid.UUID,
         business: Business = Depends(get_business),
+        session: AsyncSession = Depends(get_db_session),
     ):
         user = await self.get_user(request)
-        item = await self.model.get_item(
-            uid, business_name=business.name, user_id=user.uid
-        )
-        if item is None:
+        user_id = user.uid if user else None
+        item = await self.model.get_item(session, uid, user_id, business.name)
+
+        if not item:
             raise BaseHTTPException(
                 status_code=404,
                 error="item_not_found",
                 message=f"{self.model.__name__.capitalize()} not found",
             )
-        item.is_deleted = True
-        await item.save()
-        return item
+
+        item = await self.model.delete_item(session, item)
+        return self.delete_response_schema(**item.__dict__)
 
 
-class BusinessRouter(AbstractBaseRouter[Business]):
+class BusinessRouter(AbstractBaseRouter[Business, BusinessSchema]):
     def __init__(self):
         super().__init__(
             model=Business,
+            schema=BusinessSchema,
             user_dependency=jwt_access_security,
             prefix="/businesses",
+        )
+
+    async def create_item(
+        self,
+        request: Request,
+        item: BusinessDataCreateSchema,
+        session: AsyncSession = Depends(get_db_session),
+    ):
+        return await super().create_item(request, item.model_dump(), session)
+
+    async def update_item(
+        self,
+        request: Request,
+        uid: uuid.UUID,
+        data: BusinessDataUpdateSchema,
+        session: AsyncSession = Depends(get_db_session),
+    ):
+        return await super().update_item(
+            request, uid, data.model_dump(exclude_none=True), session
         )
 
 

@@ -2,15 +2,21 @@ import uuid
 from datetime import datetime
 from decimal import Decimal
 from enum import Enum
+from typing import Literal
 
 from apps.base.models import ImmutableBusinessOwnedEntity
 from apps.base_mongo.models import BusinessOwnedEntity
 from beanie import BackLink, Link
 from pydantic import BaseModel, Field
-from sqlalchemy import select
-from sqlalchemy.ext.asyncio import AsyncSession
 from server.db import get_db_session
+from sqlalchemy import select
 from sqlalchemy.orm import Mapped, mapped_column
+
+
+class StatusEnum(str, Enum):
+    ACTIVE = "active"
+    INACTIVE = "inactive"
+    SUSPENDED = "suspended"
 
 
 class Wallet(BusinessOwnedEntity):
@@ -30,15 +36,13 @@ class Wallet(BusinessOwnedEntity):
             base_query.append(Transaction.created_at >= from_date)
             base_query.append(Transaction.created_at <= to_date)
 
-        # session = await get_db_session()
-        async with AsyncSession() as session:
+        async for session in get_db_session():
             query = select(Transaction).where(*base_query).offset(offset).limit(limit)
             result = await session.execute(query)
             return result.scalars().all()
 
     async def get_balance(self):
-        # session = await get_db_session()
-        async with AsyncSession() as session:
+        async for session in get_db_session():
             query = (
                 select(Transaction.balance)
                 .where(Transaction.wallet_id == self.uid)
@@ -46,12 +50,12 @@ class Wallet(BusinessOwnedEntity):
                 .limit(1)
             )
             result = await session.execute(query)
-            return result.scalars().all()
+            return result.scalars().one_or_none() or Decimal(0)
 
     async def get_held_amount(
         self,
         currency: str | None = None,
-        status: "StatusEnum" | None = None,
+        status: StatusEnum | None = None,
         from_date: datetime | None = None,
         to_date: datetime | None = None,
     ):
@@ -68,11 +72,16 @@ class Wallet(BusinessOwnedEntity):
         *args,
         **kwargs,
     ):
-        items = await cls.find(
-            cls.user_id == user_id,
-            cls.business_name == business_name,
-            cls.is_deleted == False,
-        ).offset(offset).limit(limit).to_list()
+        items = (
+            await cls.find(
+                cls.user_id == user_id,
+                cls.business_name == business_name,
+                cls.is_deleted == False,
+            )
+            .offset(offset)
+            .limit(limit)
+            .to_list()
+        )
 
         return items
 
@@ -93,12 +102,6 @@ class Wallet(BusinessOwnedEntity):
     #         for hold in self.holds
     #         if hold.status == "active" and hold.expires_at > datetime.now()
     #     )
-
-
-class StatusEnum(str, Enum):
-    ACTIVE = "active"
-    INACTIVE = "inactive"
-    SUSPENDED = "suspended"
 
 
 class WalletHold(BusinessOwnedEntity):
@@ -197,6 +200,7 @@ class Participant(BaseModel):
 
 
 class Proposal(BusinessOwnedEntity):
+    issuer: Literal["user", "business", "app"] = "business"
     issuer_id: uuid.UUID
     amount: Decimal
     description: str | None
@@ -206,8 +210,8 @@ class Proposal(BusinessOwnedEntity):
     participants: list[Participant]
 
     async def get_transactions(self):
-        # session = await get_db_session()
-        async with AsyncSession() as session:
+        async for session in get_db_session():
+
             query = select(Transaction).where(Transaction.proposal_id == self.uid)
             result = await session.execute(query)
             return result.scalars().all()

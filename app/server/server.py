@@ -112,8 +112,8 @@ from apps.business_mongo.routes import router as business_router
 app.include_router(business_router, prefix="/api/v1")
 app.include_router(wallet_router, prefix="/api/v1")
 app.include_router(wallet_hold_router, prefix="/api/v1")
-app.include_router(transaction_router, prefix="/api/v1")
-app.include_router(proposal_router, prefix="/api/v1")
+# app.include_router(transaction_router, prefix="/api/v1")
+# app.include_router(proposal_router, prefix="/api/v1")
 app.include_router(application_router, prefix="/api/v1")
 
 

@@ -2,14 +2,14 @@ import uuid
 from datetime import datetime
 from decimal import Decimal
 from typing import Any
-from pydantic import BaseModel
 
 from apps.base.schemas import BusinessOwnedEntitySchema
+from pydantic import BaseModel
 
 
 class WalletSchema(BusinessOwnedEntitySchema):
     balance: Decimal
-    held_amount: Decimal
+    # held_amount: Decimal
     # transactions: list[TransactionSchema] = []
     # proposals: list[ProposalSchema] = []
 
@@ -25,6 +25,7 @@ class WalletUpdateSchema(BaseModel):
 
 class WalletHoldSchema(BusinessOwnedEntitySchema):
     wallet_id: uuid.UUID
+    currency: str
     amount: Decimal
     expires_at: datetime
     status: str

@@ -56,6 +56,7 @@ class BaseEntity:
         if hasattr(cls, "business_name"):
             base_query.append(cls.business_name == business_name)
 
+        # async for session in get_db_session():
         query = select(cls).filter(*base_query)
         result = await session.execute(query)
         item = result.scalar_one_or_none()
@@ -88,6 +89,7 @@ class BaseEntity:
             .limit(limit)
         )
 
+        # async for session in get_db_session():
         items_result = await session.execute(items_query)
         items = items_result.scalars().all()
         return items
@@ -112,6 +114,7 @@ class BaseEntity:
         # Query for getting the total count of items
         total_count_query = select(func.count()).filter(*base_query)  # .subquery()
 
+        # async for session in get_db_session():
         total_result = await session.execute(total_count_query)
         total = total_result.scalar()
 
@@ -172,6 +175,7 @@ class BaseEntity:
     @classmethod
     async def create_item(cls, session: AsyncSession, data: dict):
         item = cls(**data)
+        # async for session in get_db_session():
         session.add(item)
         await session.commit()
         await session.refresh(item)
@@ -187,6 +191,7 @@ class BaseEntity:
             #     setattr(item, key, current_value | value)
             # else:
             setattr(item, key, value)
+        # async for session in get_db_session():
         session.add(item)
         await session.commit()
         await session.refresh(item)
@@ -195,6 +200,7 @@ class BaseEntity:
     @classmethod
     async def delete_item(cls, session: AsyncSession, item: "BaseEntity"):
         item.is_deleted = True
+        # async for session in get_db_session():
         session.add(item)
         await session.commit()
         await session.refresh(item)

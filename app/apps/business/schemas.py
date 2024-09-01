@@ -1,10 +1,10 @@
 import json
 from typing import Any
 
+from apps.base.auth_middlewares import JWTSecret
 from apps.base.schemas import BaseEntitySchema
 from pydantic import BaseModel, model_validator
 from server.config import Settings
-from apps.base.auth import JWTSecret
 
 
 class Config(BaseModel):
@@ -18,7 +18,7 @@ class Config(BaseModel):
 class BusinessSchema(BaseEntitySchema):
     name: str
     domain: str
-    
+
     description: str | None = None
     config: Config = Config()
 

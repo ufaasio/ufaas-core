@@ -6,9 +6,10 @@ from typing import Literal
 
 from apps.base.models import ImmutableBusinessOwnedEntity
 from apps.base_mongo.models import BusinessOwnedEntity
+from apps.base_mongo.tasks import TaskMixin
 from beanie import BackLink, Link
 from pydantic import BaseModel, Field
-from server.db import get_db_session
+from server.db import async_session
 from sqlalchemy import select
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -36,13 +37,13 @@ class Wallet(BusinessOwnedEntity):
             base_query.append(Transaction.created_at >= from_date)
             base_query.append(Transaction.created_at <= to_date)
 
-        async for session in get_db_session():
+        async with async_session() as session:
             query = select(Transaction).where(*base_query).offset(offset).limit(limit)
             result = await session.execute(query)
             return result.scalars().all()
 
     async def get_balance(self):
-        async for session in get_db_session():
+        async with async_session() as session:
             query = (
                 select(Transaction.balance)
                 .where(Transaction.wallet_id == self.uid)
@@ -60,30 +61,6 @@ class Wallet(BusinessOwnedEntity):
         to_date: datetime | None = None,
     ):
         pass
-
-    @classmethod
-    async def list_items(
-        cls,
-        user_id: uuid.UUID = None,
-        business_name: str = None,
-        offset: int = 0,
-        limit: int = 10,
-        is_deleted: bool = False,
-        *args,
-        **kwargs,
-    ):
-        items = (
-            await cls.find(
-                cls.user_id == user_id,
-                cls.business_name == business_name,
-                cls.is_deleted == False,
-            )
-            .offset(offset)
-            .limit(limit)
-            .to_list()
-        )
-
-        return items
 
     # transactions = relationship("Transaction", back_populates="wallet")
     # holds = relationship("WalletHold", back_populates="wallet")
@@ -123,13 +100,15 @@ class WalletHold(BusinessOwnedEntity):
         status: StatusEnum | None = None,
         from_date: datetime | None = None,
         to_date: datetime | None = None,
+        is_deleted: bool = False,
     ):
         base_query = [
-            cls.is_deleted == False,
+            cls.is_deleted == is_deleted,
             cls.user_id == user_id,
             cls.business_name == business_name,
-            cls.wallet_id == wallet_id,
         ]
+        if wallet_id:
+            base_query.append(cls.wallet_id == wallet_id)
         if currency:
             base_query.append(cls.currency == currency)
 
@@ -144,7 +123,7 @@ class WalletHold(BusinessOwnedEntity):
         else:
             base_query.append(cls.expires_at > datetime.now())
 
-        return base_query
+        return cls.find(*base_query)
 
     @classmethod
     async def get_holds(
@@ -157,19 +136,115 @@ class WalletHold(BusinessOwnedEntity):
         from_date: datetime | None = None,
         to_date: datetime | None = None,
     ):
-        items = await cls.find(
-            *cls.get_holds_query(
-                user_id=user_id,
-                business_name=business_name,
-                wallet_id=wallet_id,
-                currency=currency,
-                status=status,
-                from_date=from_date,
-                to_date=to_date,
-            )
+        items = await cls.get_holds_query(
+            user_id=user_id,
+            business_name=business_name,
+            wallet_id=wallet_id,
+            currency=currency,
+            status=status,
+            from_date=from_date,
+            to_date=to_date,
         ).to_list()
 
         return items
+
+    @classmethod
+    async def list_items(
+        cls,
+        user_id: uuid.UUID,
+        business_name: str,
+        wallet_id: uuid.UUID,
+        currency: str | None = None,
+        status: StatusEnum | None = None,
+        from_date: datetime | None = None,
+        to_date: datetime | None = None,
+        is_deleted: bool = False,
+        offset: int = 0,
+        limit: int = 10,
+        *args,
+        **kwargs,
+    ):
+        offset, limit = cls.adjust_pagination(offset, limit)
+        query = cls.get_holds_query(
+            user_id=user_id,
+            business_name=business_name,
+            wallet_id=wallet_id,
+            currency=currency,
+            status=status,
+            from_date=from_date,
+            to_date=to_date,
+            is_deleted=is_deleted,
+            *args,
+            **kwargs,
+        )
+
+        items_query = query.sort("-created_at").skip(offset).limit(limit)
+        items = await items_query.to_list()
+        return items
+
+    @classmethod
+    async def total_count(
+        cls,
+        user_id: uuid.UUID,
+        business_name: str,
+        wallet_id: uuid.UUID,
+        currency: str | None = None,
+        status: StatusEnum | None = None,
+        from_date: datetime | None = None,
+        to_date: datetime | None = None,
+        is_deleted: bool = False,
+        *args,
+        **kwargs,
+    ):
+        query = cls.get_holds_query(
+            user_id=user_id,
+            business_name=business_name,
+            wallet_id=wallet_id,
+            currency=currency,
+            status=status,
+            from_date=from_date,
+            to_date=to_date,
+            is_deleted=is_deleted,
+            *args,
+            **kwargs,
+        )
+
+        return await query.count()
+
+    @classmethod
+    async def list_total_combined(
+        cls,
+        user_id: uuid.UUID,
+        business_name: str,
+        wallet_id: uuid.UUID,
+        currency: str | None = None,
+        status: StatusEnum | None = None,
+        from_date: datetime | None = None,
+        to_date: datetime | None = None,
+        is_deleted: bool = False,
+        offset: int = 0,
+        limit: int = 10,
+        *args,
+        **kwargs,
+    ) -> tuple[list["WalletHold"], int]:
+        offset, limit = cls.adjust_pagination(offset, limit)
+        query = cls.get_holds_query(
+            user_id=user_id,
+            business_name=business_name,
+            wallet_id=wallet_id,
+            currency=currency,
+            status=status,
+            from_date=from_date,
+            to_date=to_date,
+            is_deleted=is_deleted,
+            *args,
+            **kwargs,
+        )
+        items_query = query.sort("-created_at").skip(offset).limit(limit)
+        items = await items_query.to_list()
+        total = await query.count()
+
+        return items, total
 
 
 class Transaction(ImmutableBusinessOwnedEntity):
@@ -199,7 +274,7 @@ class Participant(BaseModel):
     wallet_id: uuid.UUID
 
 
-class Proposal(BusinessOwnedEntity):
+class Proposal(BusinessOwnedEntity, TaskMixin):
     issuer: Literal["user", "business", "app"] = "business"
     issuer_id: uuid.UUID
     amount: Decimal
@@ -210,8 +285,7 @@ class Proposal(BusinessOwnedEntity):
     participants: list[Participant]
 
     async def get_transactions(self):
-        async for session in get_db_session():
-
+        async with async_session() as session:
             query = select(Transaction).where(Transaction.proposal_id == self.uid)
             result = await session.execute(query)
             return result.scalars().all()

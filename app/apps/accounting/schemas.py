@@ -31,6 +31,19 @@ class WalletHoldSchema(BusinessOwnedEntitySchema):
     status: str
 
 
+class WalletHoldCreateSchema(BaseModel):
+    amount: Decimal
+    expires_at: datetime
+    status: str
+    meta_data: dict[str, Any] | None = None
+
+
+class WalletHoldUpdateSchema(BaseModel):
+    expires_at: datetime | None
+    status: str | None
+    meta_data: dict[str, Any] | None = None
+
+
 class TransactionSchema(BusinessOwnedEntitySchema):
     proposal_id: uuid.UUID
     wallet_id: uuid.UUID
@@ -51,3 +64,17 @@ class ProposalSchema(BusinessOwnedEntitySchema):
     note: str
     status: str
     participants: list[Participant]
+
+
+class ProposalCreateSchema(BaseModel):
+    amount: Decimal
+    description: str
+    note: str
+    status: str
+    participants: list[Participant]
+    meta_data: dict[str, Any] | None = None
+
+
+class ProposalUpdateSchema(BaseModel):
+    status: str | None
+    meta_data: dict[str, Any] | None = None

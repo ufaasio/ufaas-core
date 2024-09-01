@@ -7,8 +7,6 @@ from apps.base.schemas import BusinessEntitySchema, PaginatedResponse
 from core.exceptions import BaseHTTPException
 from fastapi import Depends, Query, Request
 from server.config import Settings
-from server.db import get_db_session
-from sqlalchemy.ext.asyncio import AsyncSession
 from usso.fastapi import jwt_access_security
 
 from .handlers import create_dto_business
@@ -28,13 +26,11 @@ class AbstractBusinessBaseRouter(AbstractBaseRouter[T, TS]):
         offset: int = Query(0, ge=0),
         limit: int = Query(10, ge=0, le=Settings.page_max_limit),
         business: Business = Depends(get_business),
-        session: AsyncSession = Depends(get_db_session),
     ):
         user = await self.get_user(request)
         limit = max(1, min(limit, Settings.page_max_limit))
 
         items, total = await self.model.list_total_combined(
-            session,
             offset=offset,
             limit=limit,
             user_id=user.uid,
@@ -50,11 +46,10 @@ class AbstractBusinessBaseRouter(AbstractBaseRouter[T, TS]):
         request: Request,
         uid: uuid.UUID,
         business: Business = Depends(get_business),
-        session: AsyncSession = Depends(get_db_session),
     ):
         user = await self.get_user(request)
         user_id = user.uid if user else None
-        item = await self.model.get_item(session, uid, user_id, business.name)
+        item = await self.model.get_item(uid, user_id, business.name)
 
         if item is None:
             raise BaseHTTPException(
@@ -68,13 +63,12 @@ class AbstractBusinessBaseRouter(AbstractBaseRouter[T, TS]):
         self,
         request: Request,
         business: Business = Depends(get_business),
-        session: AsyncSession = Depends(get_db_session),
     ):
         user = await self.get_user(request)
         item_data = await create_dto_business(self.model)(
             request, user, business_name=business.name
         )
-        item = await self.model.create_item(session, item_data.model_dump())
+        item = await self.model.create_item(item_data.model_dump())
         return self.create_response_schema(**item.__dict__)
 
     async def update_item(
@@ -83,11 +77,10 @@ class AbstractBusinessBaseRouter(AbstractBaseRouter[T, TS]):
         uid: uuid.UUID,
         data: dict,
         business: Business = Depends(get_business),
-        session: AsyncSession = Depends(get_db_session),
     ):
         user = await self.get_user(request)
         user_id = user.uid if user else None
-        item = await self.model.get_item(session, uid, user_id, business.name)
+        item = await self.model.get_item(uid, user_id, business.name)
 
         if not item:
             raise BaseHTTPException(
@@ -96,7 +89,7 @@ class AbstractBusinessBaseRouter(AbstractBaseRouter[T, TS]):
                 message=f"item not found",
             )
 
-        item = await self.model.update_item(session, item, data)
+        item = await self.model.update_item(item, data)
         return self.update_response_schema(**item.__dict__)
 
     async def delete_item(
@@ -104,11 +97,10 @@ class AbstractBusinessBaseRouter(AbstractBaseRouter[T, TS]):
         request: Request,
         uid: uuid.UUID,
         business: Business = Depends(get_business),
-        session: AsyncSession = Depends(get_db_session),
     ):
         user = await self.get_user(request)
         user_id = user.uid if user else None
-        item = await self.model.get_item(session, uid, user_id, business.name)
+        item = await self.model.get_item(uid, user_id, business.name)
 
         if not item:
             raise BaseHTTPException(
@@ -117,7 +109,7 @@ class AbstractBusinessBaseRouter(AbstractBaseRouter[T, TS]):
                 message=f"{self.model.__name__.capitalize()} not found",
             )
 
-        item = await self.model.delete_item(session, item)
+        item = await self.model.delete_item(item)
         return self.delete_response_schema(**item.__dict__)
 
 
@@ -134,19 +126,17 @@ class BusinessRouter(AbstractBaseRouter[Business, BusinessSchema]):
         self,
         request: Request,
         item: BusinessDataCreateSchema,
-        session: AsyncSession = Depends(get_db_session),
     ):
-        return await super().create_item(request, item.model_dump(), session)
+        return await super().create_item(item.model_dump())
 
     async def update_item(
         self,
         request: Request,
         uid: uuid.UUID,
         data: BusinessDataUpdateSchema,
-        session: AsyncSession = Depends(get_db_session),
     ):
         return await super().update_item(
-            request, uid, data.model_dump(exclude_none=True), session
+            request, uid, data.model_dump(exclude_none=True)
         )
 
 

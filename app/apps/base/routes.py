@@ -3,10 +3,8 @@ from typing import Any, Generic, Type, TypeVar
 
 import singleton
 from core.exceptions import BaseHTTPException
-from fastapi import APIRouter, Depends, Query, Request
+from fastapi import APIRouter, Query, Request
 from server.config import Settings
-from server.db import get_db_session
-from sqlalchemy.ext.asyncio import AsyncSession
 
 from .handlers import create_dto
 from .models import BaseEntity
@@ -98,13 +96,12 @@ class AbstractBaseRouter(Generic[T, TS], metaclass=singleton.Singleton):
         request: Request,
         offset: int = Query(0, ge=0),
         limit: int = Query(10, ge=0, le=Settings.page_max_limit),
-        session: AsyncSession = Depends(get_db_session),
     ):
         user = await self.get_user(request)
         limit = max(1, min(limit, Settings.page_max_limit))
 
         items, total = await self.model.list_total_combined(
-            session, offset=offset, limit=limit, user_id=user.uid if user else None
+            offset=offset, limit=limit, user_id=user.uid if user else None
         )
 
         items_in_schema = [self.list_item_schema(**item.__dict__) for item in items]
@@ -116,11 +113,10 @@ class AbstractBaseRouter(Generic[T, TS], metaclass=singleton.Singleton):
         self,
         request: Request,
         uid: uuid.UUID,
-        session: AsyncSession = Depends(get_db_session),
     ):
         user = await self.get_user(request)
         user_id = user.uid if user else None
-        item = await self.model.get_item(session, uid, user_id)
+        item = await self.model.get_item(uid, user_id)
 
         if item is None:
             raise BaseHTTPException(
@@ -134,11 +130,10 @@ class AbstractBaseRouter(Generic[T, TS], metaclass=singleton.Singleton):
         self,
         request: Request,
         item: dict,
-        session: AsyncSession = Depends(get_db_session),
     ):
         user = await self.get_user(request)
         item_data: TS = await create_dto(self.create_request_schema)(request, user)
-        item = await self.model.create_item(session, item_data.model_dump())
+        item = await self.model.create_item(item_data.model_dump())
         return self.create_response_schema(**item.__dict__)
 
     async def update_item(
@@ -146,11 +141,10 @@ class AbstractBaseRouter(Generic[T, TS], metaclass=singleton.Singleton):
         request: Request,
         uid: uuid.UUID,
         data: dict,
-        session: AsyncSession = Depends(get_db_session),
     ):
         user = await self.get_user(request)
         user_id = user.uid if user else None
-        item = await self.model.get_item(session, uid, user_id)
+        item = await self.model.get_item(uid, user_id)
 
         if not item:
             raise BaseHTTPException(
@@ -159,18 +153,17 @@ class AbstractBaseRouter(Generic[T, TS], metaclass=singleton.Singleton):
                 message=f"{self.model.__name__.capitalize()} not found",
             )
 
-        item = await self.model.update_item(session, item, data)
+        item = await self.model.update_item(item, data)
         return self.update_response_schema(**item.__dict__)
 
     async def delete_item(
         self,
         request: Request,
         uid: uuid.UUID,
-        session: AsyncSession = Depends(get_db_session),
     ):
         user = await self.get_user(request)
         user_id = user.uid if user else None
-        item = await self.model.get_item(session, uid, user_id)
+        item = await self.model.get_item(uid, user_id)
 
         if not item:
             raise BaseHTTPException(
@@ -179,5 +172,5 @@ class AbstractBaseRouter(Generic[T, TS], metaclass=singleton.Singleton):
                 message=f"{self.model.__name__.capitalize()} not found",
             )
 
-        item = await self.model.delete_item(session, item)
+        item = await self.model.delete_item(item)
         return self.delete_response_schema(**item.__dict__)

@@ -9,6 +9,7 @@ from apps.base.schemas import (
 )
 from beanie import Document, Insert, Replace, Save, SaveChanges, Update, before_event
 from pymongo import ASCENDING, IndexModel
+from server.config import Settings
 
 from .tasks import TaskMixin
 
@@ -69,6 +70,12 @@ class BaseEntity(BaseEntitySchema, Document):
         return items[0]
 
     @classmethod
+    def adjust_pagination(cls, offset: int, limit: int):
+        offset = max(offset or 0, 0)
+        limit = max(1, min(limit or 10, Settings.page_max_limit))
+        return offset, limit
+
+    @classmethod
     async def list_items(
         cls,
         user_id: uuid.UUID = None,
@@ -79,6 +86,8 @@ class BaseEntity(BaseEntitySchema, Document):
         *args,
         **kwargs,
     ):
+        offset, limit = cls.adjust_pagination(offset, limit)
+
         query = cls.get_query(
             user_id=user_id,
             business_name=business_name,
@@ -120,6 +129,8 @@ class BaseEntity(BaseEntitySchema, Document):
         *args,
         **kwargs,
     ) -> tuple[list["BaseEntity"], int]:
+        offset, limit = cls.adjust_pagination(offset, limit)
+
         query = cls.get_query(
             user_id=user_id,
             business_name=business_name,

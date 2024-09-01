@@ -2,6 +2,7 @@ import uuid
 from datetime import datetime, timezone
 from typing import Any
 
+from server.db import async_session
 from sqlalchemy import JSON, event, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.ext.declarative import as_declarative, declared_attr
@@ -41,7 +42,6 @@ class BaseEntity:
     @classmethod
     async def get_item(
         cls,
-        session: AsyncSession,
         uid: uuid.UUID,
         user_id: uuid.UUID = None,
         business_name: str = None,
@@ -56,16 +56,15 @@ class BaseEntity:
         if hasattr(cls, "business_name"):
             base_query.append(cls.business_name == business_name)
 
-        # async for session in get_db_session():
-        query = select(cls).filter(*base_query)
-        result = await session.execute(query)
-        item = result.scalar_one_or_none()
+        async with async_session() as session:
+            query = select(cls).filter(*base_query)
+            result = await session.execute(query)
+            item = result.scalar_one_or_none()
         return item
 
     @classmethod
     async def list_items(
         cls,
-        session: AsyncSession,
         user_id: uuid.UUID = None,
         business_name: str = None,
         offset: int = 0,
@@ -89,15 +88,14 @@ class BaseEntity:
             .limit(limit)
         )
 
-        # async for session in get_db_session():
-        items_result = await session.execute(items_query)
-        items = items_result.scalars().all()
+        async with async_session() as session:
+            items_result = await session.execute(items_query)
+            items = items_result.scalars().all()
         return items
 
     @classmethod
     async def total_count(
         cls,
-        session: AsyncSession,
         user_id: uuid.UUID = None,
         business_name: str = None,
         is_deleted: bool = False,
@@ -114,8 +112,8 @@ class BaseEntity:
         # Query for getting the total count of items
         total_count_query = select(func.count()).filter(*base_query)  # .subquery()
 
-        # async for session in get_db_session():
-        total_result = await session.execute(total_count_query)
+        async with async_session() as session:
+            total_result = await session.execute(total_count_query)
         total = total_result.scalar()
 
         return total
@@ -173,16 +171,16 @@ class BaseEntity:
         # res = result.scalars().all()
 
     @classmethod
-    async def create_item(cls, session: AsyncSession, data: dict):
+    async def create_item(cls, data: dict):
         item = cls(**data)
-        # async for session in get_db_session():
-        session.add(item)
-        await session.commit()
-        await session.refresh(item)
+        async with async_session() as session:
+            session.add(item)
+            await session.commit()
+            await session.refresh(item)
         return item
 
     @classmethod
-    async def update_item(cls, session: AsyncSession, item: "BaseEntity", data: dict):
+    async def update_item(cls, item: "BaseEntity", data: dict):
         # Todo: check data has valid and permitted keys
         for key, value in data.items():
             # if type(value) is dict:
@@ -191,19 +189,20 @@ class BaseEntity:
             #     setattr(item, key, current_value | value)
             # else:
             setattr(item, key, value)
-        # async for session in get_db_session():
-        session.add(item)
-        await session.commit()
-        await session.refresh(item)
+
+        async with async_session() as session:
+            session.add(item)
+            await session.commit()
+            await session.refresh(item)
         return item
 
     @classmethod
-    async def delete_item(cls, session: AsyncSession, item: "BaseEntity"):
+    async def delete_item(cls, item: "BaseEntity"):
         item.is_deleted = True
-        # async for session in get_db_session():
-        session.add(item)
-        await session.commit()
-        await session.refresh(item)
+        async with async_session() as session:
+            session.add(item)
+            await session.commit()
+            await session.refresh(item)
         return item
 
 

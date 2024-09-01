@@ -1,7 +1,7 @@
 from apps.base.models import BaseEntity
 from apps.business.schemas import Config
+from server.db import async_session
 from sqlalchemy import JSON
-from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -13,10 +13,11 @@ class Business(BaseEntity):
     config: Mapped[Config] = mapped_column(JSON, default=Config())
 
     @classmethod
-    async def get_by_origin(cls, origin: str, session: AsyncSession):
+    async def get_by_origin(cls, origin: str):
         domain = origin.split("//")[-1].split("/")[0]
-        result = await session.execute(select(cls).where(cls.domain == domain))
-        business = result.scalars().first()
+        async with async_session() as session:
+            result = await session.execute(select(cls).where(cls.domain == domain))
+            business = result.scalars().first()
 
         return business
 

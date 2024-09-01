@@ -8,10 +8,8 @@ from apps.business.routes import AbstractBusinessBaseRouter as AbstractBusinessS
 from apps.business_mongo.middlewares import AuthorizationData, authorization_middleware
 from apps.business_mongo.routes import AbstractBusinessBaseRouter
 from core.exceptions import BaseHTTPException
-from fastapi import Depends, Query, Request
+from fastapi import Query, Request
 from server.config import Settings
-from server.db import get_db_session
-from sqlalchemy.ext.asyncio import AsyncSession
 
 T = TypeVar("T", bound=BusinessEntity)
 TS = TypeVar("TS", bound=BusinessEntitySchema)
@@ -98,13 +96,13 @@ class AbstractAuthRouter(AbstractBusinessBaseRouter[T, TS]):
         return item
 
 
-TSQL = TypeVar("TSQL", bound=BusinessEntitySQL)
+T_SQL = TypeVar("T_SQL", bound=BusinessEntitySQL)
 
 
-class AbstractAuthSQLRouter(AbstractBusinessSQLRouter[TSQL, TS]):
+class AbstractAuthSQLRouter(AbstractBusinessSQLRouter[T_SQL, TS]):
     def __init__(
         self,
-        model: Type[TSQL],
+        model: Type[T_SQL],
         user_dependency: Any,
         *args,
         prefix: str = None,
@@ -130,11 +128,9 @@ class AbstractAuthSQLRouter(AbstractBusinessSQLRouter[TSQL, TS]):
         request: Request,
         offset: int = Query(0, ge=0),
         limit: int = Query(10, ge=0, le=Settings.page_max_limit),
-        session: AsyncSession = Depends(get_db_session),
     ):
         auth = await self.get_auth(request)
         items, total = await self.model.list_total_combined(
-            session=session,
             user_id=auth.user_id,
             business_name=auth.business.name,
             offset=offset,
@@ -150,11 +146,10 @@ class AbstractAuthSQLRouter(AbstractBusinessSQLRouter[TSQL, TS]):
         self,
         request: Request,
         uid: uuid.UUID,
-        session: AsyncSession = Depends(get_db_session),
     ):
         auth = await self.get_auth(request)
         item = await self.model.get_item(
-            session, uid, user_id=auth.user_id, business_name=auth.business.name
+            uid, user_id=auth.user_id, business_name=auth.business.name
         )
 
         if item is None:

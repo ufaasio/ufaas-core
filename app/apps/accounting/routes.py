@@ -2,25 +2,28 @@ import uuid
 
 from apps.base.schemas import PaginatedResponse
 from apps.business.routes import AbstractBusinessBaseRouter as AbstractBusinessSQLRouter
-from apps.business_mongo.middlewares import AuthorizationException
-from apps.business_mongo.routes import AbstractBusinessBaseRouter
+from apps.business_mongo.middlewares import AuthorizationData, AuthorizationException
+from core.exceptions import BaseHTTPException
 from fastapi import Query, Request
 from server.config import Settings
-from usso.fastapi import jwt_access_security
 
 from .abstract_routers import AbstractAuthRouter
 from .models import Proposal, Transaction, Wallet, WalletHold
 from .schemas import (
+    ProposalCreateSchema,
     ProposalSchema,
+    ProposalUpdateSchema,
     TransactionSchema,
     WalletCreateSchema,
+    WalletHoldCreateSchema,
     WalletHoldSchema,
+    WalletHoldUpdateSchema,
     WalletSchema,
     WalletUpdateSchema,
 )
 
 
-class WalletRouter(AbstractAuthRouter[Wallet, Wallet]):
+class WalletRouter(AbstractAuthRouter[Wallet, WalletSchema]):
     def __init__(self):
         super().__init__(
             model=Wallet,
@@ -39,6 +42,7 @@ class WalletRouter(AbstractAuthRouter[Wallet, Wallet]):
     async def list_items(
         self,
         request: Request,
+        user_id: uuid.UUID | None = None,
         offset: int = Query(0, ge=0),
         limit: int = Query(10, ge=0, le=Settings.page_max_limit),
     ):
@@ -70,6 +74,14 @@ class WalletRouter(AbstractAuthRouter[Wallet, Wallet]):
             raise AuthorizationException("User cannot create wallet")
         return await super().create_item(request, data.model_dump())
 
+    async def update_item(
+        self, request: Request, uid: uuid.UUID, data: WalletUpdateSchema
+    ):
+        auth = await self.get_auth(request)
+        if auth.business_or_user == "User":
+            raise AuthorizationException("User cannot update wallet")
+        return await super().update_item(request, uid, data.model_dump())
+
     async def delete_item(self, request: Request, uid: uuid.UUID):
         auth = await self.get_auth(request)
         if auth.business_or_user == "User":
@@ -83,7 +95,7 @@ class WalletHoldRouter(AbstractAuthRouter[WalletHold, WalletHoldSchema]):
             model=WalletHold,
             schema=WalletHoldSchema,
             user_dependency=None,
-            prefix="/wallet/{wallet_id:uuid}/holds",
+            prefix="/wallet",
             tags=["Hold"],
         )
 
@@ -96,28 +108,35 @@ class WalletHoldRouter(AbstractAuthRouter[WalletHold, WalletHoldSchema]):
             status_code=200,
         )
         self.router.add_api_route(
-            "/{currency}",
+            "/{wallet_id:uuid}/holds",
             self.list_items,
             methods=["GET"],
             response_model=self.list_response_schema,
             status_code=200,
         )
         self.router.add_api_route(
-            "/{uid:uuid}",
+            "/{wallet_id:uuid}/holds/{currency}",
+            self.list_items,
+            methods=["GET"],
+            response_model=self.list_response_schema,
+            status_code=200,
+        )
+        self.router.add_api_route(
+            "/holds/{uid:uuid}",
             self.retrieve_item,
             methods=["GET"],
             response_model=self.retrieve_response_schema,
             status_code=200,
         )
         self.router.add_api_route(
-            "/{currency}",
+            "/{wallet_id:uuid}/holds/{currency}",
             self.create_item,
             methods=["POST"],
             response_model=self.create_response_schema,
             status_code=201,
         )
         self.router.add_api_route(
-            "/{uid:uuid}",
+            "/holds/{uid:uuid}",
             self.update_item,
             methods=["PATCH"],
             response_model=self.update_response_schema,
@@ -127,13 +146,65 @@ class WalletHoldRouter(AbstractAuthRouter[WalletHold, WalletHoldSchema]):
     async def list_items(
         self,
         request: Request,
-        wallet_id: uuid.UUID,
-        currency: str = None,
+        wallet_id: uuid.UUID | None = None,
+        currency: str | None = None,
         offset: int = Query(0, ge=0),
         limit: int = Query(10, ge=0, le=Settings.page_max_limit),
     ):
-        await self.get_auth(request)
-        return await super().list_items(request, offset, limit, wallet_id, currency)
+        auth = await self.get_auth(request)
+
+        items, total = await self.model.list_total_combined(
+            user_id=auth.user_id,
+            business_name=auth.business.name,
+            wallet_id=wallet_id,
+            currency=currency,
+            offset=offset,
+            limit=limit,
+        )
+
+        items_in_schema = [self.list_item_schema(**item.model_dump()) for item in items]
+
+        return PaginatedResponse(
+            items=items_in_schema, offset=offset, limit=limit, total=total
+        )
+
+    async def retrieve_item(self, request: Request, uid: uuid.UUID):
+        super().retrieve_item(request, uid)
+
+    async def create_item(
+        self,
+        request: Request,
+        wallet_id: uuid.UUID,
+        currency: str,
+        data: WalletHoldCreateSchema,
+    ):
+        auth = await self.get_auth(request)
+
+        if auth.business_or_user == "User":
+            raise AuthorizationException("User cannot create wallet hold")
+
+        wallet: Wallet = await Wallet.get_item(wallet_id, auth.business.name)
+        if wallet is None:
+            raise BaseHTTPException(404, error="not_found", message="Wallet not found")
+
+        data = data.model_dump() | dict(
+            business_name=auth.business.name,
+            wallet_id=wallet_id,
+            currency=currency,
+            user_id=wallet.user_id,
+        )
+
+        item = self.model(**data)
+        await item.save()
+        return self.create_response_schema(**item.model_dump())
+
+    async def update_item(
+        self, request: Request, uid: uuid.UUID, data: WalletHoldUpdateSchema
+    ):
+        auth = await self.get_auth(request)
+        if auth.business_or_user == "User":
+            raise AuthorizationException("User cannot update wallet hold")
+        return await super().update_item(request, uid, data.model_dump())
 
 
 class TransactionRouter(AbstractBusinessSQLRouter[Transaction, TransactionSchema]):
@@ -163,7 +234,7 @@ class TransactionRouter(AbstractBusinessSQLRouter[Transaction, TransactionSchema
         )
 
 
-class ProposalRouter(AbstractBusinessBaseRouter[Proposal, ProposalSchema]):
+class ProposalRouter(AbstractAuthRouter[Proposal, ProposalSchema]):
     def __init__(self):
         super().__init__(
             model=Proposal,
@@ -196,20 +267,38 @@ class ProposalRouter(AbstractBusinessBaseRouter[Proposal, ProposalSchema]):
             response_model=self.create_response_schema,
             status_code=201,
         )
-        # self.router.add_api_route(
-        #     "/{uid:uuid}",
-        #     self.update_item,
-        #     methods=["PATCH"],
-        #     response_model=self.update_response_schema,
-        #     status_code=200,
-        # )
-        # self.router.add_api_route(
-        #     "/{uid:uuid}",
-        #     self.delete_item,
-        #     methods=["DELETE"],
-        #     response_model=self.delete_response_schema,
-        #     # status_code=204,
-        # )
+        self.router.add_api_route(
+            "/{uid:uuid}",
+            self.update_item,
+            methods=["PATCH"],
+            response_model=self.update_response_schema,
+            status_code=200,
+        )
+
+    async def get_auth(self, request: Request) -> AuthorizationData:
+        auth = await super().get_auth(request)
+        if auth.business_or_user == "User":
+            raise AuthorizationException("User do not have access to proposal")
+        return auth
+
+    async def list_items(
+        self,
+        request: Request,
+        offset: int = Query(0, ge=0),
+        limit: int = Query(10, ge=0, le=Settings.page_max_limit),
+    ):
+        return await super().list_items(request, offset, limit)
+
+    async def retrieve_item(self, request: Request, uid: uuid.UUID):
+        return await super().retrieve_item(request, uid)
+
+    async def create_item(self, request: Request, data: ProposalCreateSchema):
+        return await super().create_item(request, data)
+
+    async def update_item(
+        self, request: Request, uid: uuid.UUID, data: ProposalUpdateSchema
+    ):
+        return await super().update_item(request, uid, data)
 
 
 wallet_router = WalletRouter().router

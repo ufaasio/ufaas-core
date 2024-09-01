@@ -1,58 +1,75 @@
+import asyncio
 import logging
 import uuid
 
-from apps.accounting.models import Proposal, Transaction, Wallet
-from apps.business.models import Business
+
+from apps.accounting.models import Proposal, Transaction, Wallet, Participant
+from apps.business_mongo.models import Business
+from pydantic import BaseModel
+from decimal import Decimal
+from server.db import async_session
+from sqlalchemy.ext.asyncio import AsyncSession
+
+
+class ParticipantWallet(BaseModel):
+    amount: Decimal
+    wallet: Wallet
+    balance: Decimal
+
+
+async def participant_validator(
+    participant_wallet: ParticipantWallet, business: Business
+):
+    return True
 
 
 async def fail_proposal(proposal: Proposal, message: str = None):
     logging.error(f"Error processing proposal {proposal.id} - {message}")
-    proposal.status = "error"
-    proposal.save()
+    proposal.task_status = "error"
+    await proposal.save_report(message, emit=False)
+    await proposal.save_and_emit()
 
 
-async def success_proposal(proposal: Proposal, **kwargs):
-    ## Let's process the proposal
-    # create metadata
-    # get django atomic session
-    # Create transaction for source wallet
-    # Create transaction for each destination wallet
-    # Update proposal status to success
+async def success_proposal(
+    business: Business,
+    proposal: Proposal,
+    participants_wallets: list[ParticipantWallet],
+    session: AsyncSession,
+    **kwargs,
+):
+    async with session.begin():
+        ## Let's process the proposal
+        # create meta_data
+        # get django atomic session
+        # Create transaction for source wallet
+        # Create transaction for each destination wallet
+        # Update proposal status to success
 
-    metadata = proposal.metadata or {}
-    metadata["proposal_id"] = proposal.id
+        meta_data = proposal.meta_data or {}
 
-    source_wallet = kwargs.get("source_wallet")
-    source_wallet_balance = kwargs.get("source_wallet_balance")
-    recipients: list[Recipient] = kwargs.get("recipients")
+        for participant in participants_wallets:
+            if not await participant_validator(participant, business):
+                return fail_proposal(
+                    proposal,
+                    f"Participant {participant.wallet.id} is not valid",
+                )
 
-    with transaction.atomic():
-        source_transaction = Transaction(
-            metadata=metadata,
-            business_id=proposal.business_id,
-            user_id=proposal.user_id,
-            wallet=source_wallet,
-            amount=-proposal.amount,
-            balance=source_wallet_balance - proposal.amount,
-            description=proposal.description,
-            note=proposal.note,
-        )
-        source_transaction.save()
-
-        for recipient in recipients:
-            recipient_transaction = Transaction(
-                metadata=metadata,
-                business_id=proposal.business_id,
-                user_id=proposal.user_id,
-                wallet=recipient.wallet,
-                amount=recipient.amount,
-                balance=recipient.wallet.balance + recipient.amount,
+            transaction = Transaction(
+                business_name=proposal.business_name,
+                user_id=participant.wallet.user_id,
+                meta_data=meta_data,
+                proposal_id=proposal.uid,
+                wallet_id=participant.wallet.uid,
+                amount=participant.amount,
+                currency=proposal.currency,
+                balance=participant.balance + participant.amount,
                 description=proposal.description,
-                note=proposal.note,
+                # note=proposal.note,
             )
-            recipient_transaction.save()
-        proposal.status = "success"
-        proposal.save()
+            session.add(transaction)
+        proposal.task_status = "completed"
+        await proposal.save_report("Proposal processed successfully", emit=False)
+        await proposal.save()
 
 
 async def notify_proposal(proposal: Proposal, message: str):
@@ -60,178 +77,125 @@ async def notify_proposal(proposal: Proposal, message: str):
     return
 
 
-async def process_proposal(proposal_id: uuid.UUID):
-    logging.info(f"Processing proposal {proposal_id}")
-    try:
-        proposal = Proposal.objects.get(id=proposal_id)
-        if not proposal:
-            logging.error(f"Proposal {proposal_id} does not exist")
-            return
+async def process_proposal(proposal: Proposal):
+    logging.info(f"Processing proposal {proposal.uid}")
+    async with async_session() as session:
+        try:
+            # Check if the proposal is already processed / Check status
+            if proposal.task_status != "init":
+                logging.error(f"Proposal {proposal.id} is already processed")
+                return
 
-        # Check if the proposal is already processed / Check status
-        if proposal.status != "init":
-            logging.error(f"Proposal {proposal.id} is already processed")
-            return
+            proposal.task_status = "processing"
+            await proposal.save()
 
-        # Check if business exists
-        business = Business.objects.get(id=proposal.business_id)
-        if not business:
-            return fail_proposal(
-                proposal, f"Business {proposal.business_id} does not exist"
-            )
-
-        # Check if the proposal recipients are in valid formats
-        if not proposal.recipients:
-            return fail_proposal(proposal, "Proposal recipients is empty")
-        if type(proposal.recipients) != list:
-            return fail_proposal(proposal, "Proposal recipients is not a list")
-
-        recipients: list[Recipient] = []
-        for recipient_dict in proposal.recipients:
-            recipient = Recipient(**recipient_dict)
-            if recipient:
-                return fail_proposal(proposal, "Invalid recipient format")
-            recipients.append(recipient)
-
-        # Check if the proposal source wallet exists
-        source_wallet = Wallet.objects.get(id=proposal.source_id)
-        if not source_wallet:
-            return fail_proposal(
-                proposal, f"Source wallet {proposal.source_id} does not exist"
-            )
-
-        # Others check should be atomic
-
-        # Check if the proposal source wallet user_id and business_id are valid
-        if source_wallet.business_id != proposal.business_id:
-            return fail_proposal(
-                proposal,
-                f"Business {proposal.business_id} does not have access to source wallet {source_wallet.id}",
-            )
-
-        if source_wallet.user_id != proposal.user_id:
-            return fail_proposal(
-                proposal,
-                f"User {proposal.user_id} does not have access to source wallet {source_wallet.id}",
-            )
-
-        # Check if the proposal source wallet is active
-        if source_wallet.is_deleted:
-            return fail_proposal(
-                proposal, f"Source wallet {source_wallet.id} is deleted"
-            )
-
-        # Check if the proposal destinations wallets are exists and active
-        for recipient in recipients:
-            destination_wallet = Wallet.objects.get(id=recipient.destination_id)
-            if not destination_wallet:
+            # Check if business exists
+            business = await Business.get_by_name(proposal.business_name)
+            if not business:
                 return fail_proposal(
-                    proposal,
-                    f"Destination wallet {recipient.destination_id} does not exist",
-                )
-            if destination_wallet.is_deleted:
-                return fail_proposal(
-                    proposal,
-                    f"Destination wallet {destination_wallet.id} is deleted",
-                )
-            recipient.wallet = destination_wallet
-
-        # Check if requester has access to source wallet
-        if proposal.requester == "user":
-            if source_wallet.user_id != proposal.user_id:
-                return fail_proposal(
-                    proposal,
-                    f"User {proposal.user_id} does not have access to source wallet {source_wallet.id}",
-                )
-        elif proposal.requester == "business":
-            if source_wallet.business_id != proposal.business_id:
-                return fail_proposal(
-                    proposal,
-                    f"Business {proposal.business_id} does not have access to source wallet {source_wallet.id}",
+                    proposal, f"Business {proposal.business_name} does not exist"
                 )
 
-        # Check if requester has access to destinations
-        for recipient in recipients:
-            if recipient.wallet.business_id != proposal.business_id:
-                return fail_proposal(
-                    proposal,
-                    f"The destination wallet {recipient.wallet.id} does not belongs to business {proposal.business_id}.",
+            # Check if the proposal recipients are in valid formats
+            if not proposal.participants:
+                return fail_proposal(proposal, "Proposal participants is empty")
+            if type(proposal.participants) != list:
+                return fail_proposal(proposal, "Proposal participants is not a list")
+
+            async def get_participant_wallets(participants: list[Participant]):
+                async def get_participant_wallet(participant: Participant):
+                    wallet: Wallet = await Wallet.get_item(
+                        participant.wallet_id, business.name
+                    )
+                    return ParticipantWallet(
+                        wallet=wallet,
+                        amount=participant.amount,
+                        balance=await wallet.get_balance(proposal.currency),
+                    )
+
+                return await asyncio.gather(
+                    *[
+                        get_participant_wallet(participant)
+                        for participant in participants
+                    ]
                 )
 
-        # Check if sent amount equals to sum of all recipient amounts
-        total_amount = sum([recipient.amount for recipient in recipients])
-        if proposal.amount != total_amount:
-            return fail_proposal(
-                proposal,
-                f"Total amount {total_amount} is not equal to proposal amount {proposal.amount}",
-            )
+            participants_wallets = await get_participant_wallets(proposal.participants)
+            sources = [
+                participant
+                for participant in participants_wallets
+                if participant.amount < 0
+            ]
+            recipients = [
+                participant
+                for participant in participants_wallets
+                if participant.amount > 0
+            ]
 
-        with transaction.atomic():
-            # Check if source wallet has enough balance except the hold amount
-            source_wallet_balance = source_wallet.balance
-            if source_wallet_balance - source_wallet.hold_amount < proposal.amount:
-                return fail_proposal(
-                    proposal,
-                    f"Insufficient balance in source wallet {source_wallet.id} after hold amount",
-                )
+            # Others check should be atomic
 
-            ## Let's process the proposal
-            # create metadata
-            # get django atomic session
-            # Create transaction for source wallet
-            # Create transaction for each destination wallet
-            # Update proposal status to success
+            # Check if the proposal source wallets are exists and active
+            for source in sources:
+                if source.wallet.business_name != proposal.business_name:
+                    return fail_proposal(
+                        proposal,
+                        f"Business {proposal.business_name} does not have access to source wallet {source.wallet.id}",
+                    )
 
-            metadata = proposal.metadata or {}
-            metadata["proposal_id"] = proposal.id
+                # Check if the proposal source wallet is active
+                if source.wallet.is_deleted:
+                    return fail_proposal(
+                        proposal, f"Source wallet {source.wallet.id} is deleted"
+                    )
 
-            source_transaction = Transaction(
-                metadata=metadata,
-                business_id=proposal.business_id,
-                user_id=proposal.user_id,
-                wallet=source_wallet,
-                amount=-proposal.amount,
-                balance=source_wallet_balance - proposal.amount,
-                description=proposal.description,
-                note=proposal.note,
-            )
-            source_transaction.save()
-
-            recipient_transactions = []
+            # Check if the proposal destinations wallets are exists and active
             for recipient in recipients:
-                recipient_transaction = Transaction(
-                    metadata=metadata,
-                    business_id=proposal.business_id,
-                    user_id=proposal.user_id,
-                    wallet=recipient.wallet,
-                    amount=recipient.amount,
-                    balance=recipient.wallet.balance + recipient.amount,
-                    description=proposal.description,
-                    note=proposal.note,
+                if recipient.wallet.business_name != proposal.business_name:
+                    return fail_proposal(
+                        proposal,
+                        f"The destination wallet {recipient.wallet.id} does not belongs to business {proposal.business_name}.",
+                    )
+                if recipient.wallet.is_deleted:
+                    return fail_proposal(
+                        proposal,
+                        f"Destination wallet {recipient.wallet.id} is deleted",
+                    )
+
+            # Check if requester has access to source wallet
+
+            # Check if sent amount equals to sum of all recipient amounts
+            source_amount = sum([source.amount for source in sources])
+            recipient_amount = sum([recipient.amount for recipient in recipients])
+            if -source_amount != recipient_amount:
+                return fail_proposal(
+                    proposal,
+                    f"Total amount {source_amount} is not equal to proposal amount {recipient_amount}",
                 )
-                recipient_transaction.save()
-                recipient_transactions.append(recipient_transaction)
-            proposal.status = "success"
-            proposal.save()
+            if proposal.amount != recipient_amount:
+                return fail_proposal(
+                    proposal,
+                    f"Total amount {recipient_amount} is not equal to proposal amount {proposal.amount}",
+                )
 
-        # Send notifications
-        # Send notification to source wallet
-        # Send notification to all recipients
-        # Send notification to requester
-        # Send notification to business
-        source_wallet.notify(f"Transaction {source_transaction.id} is successful")
-        for recipient in recipients:
-            recipient.wallet.notify(
-                f"Transaction {recipient_transaction.id} is successful"
+            # Check if source wallet has enough balance except the hold amount
+            # todo: parallelize this
+            for source in sources:
+                held_amount = await source.wallet.get_held_amount(proposal.currency)
+                if source.balance - held_amount < source.amount:
+                    return fail_proposal(
+                        proposal,
+                        f"Insufficient balance in source wallet {source.wallet.id}",
+                    )
+
+            await success_proposal(
+                business=business,
+                proposal=proposal,
+                participants_wallets=participants_wallets,
+                session=session,
             )
-        if proposal.requester == "business":
-            business.notify(f"Proposal {proposal.id} is successful")
 
-        return {
-            "source_transaction": source_transaction,
-            "recipient_transactions": recipient_transactions,
-        }
-
-    except Exception:
-        if proposal:
-            fail_proposal(proposal)
+        except Exception as e:
+            await session.rollback()
+            logging.error(f"Error processing proposal {proposal.uid} - {e}")
+            if proposal:
+                fail_proposal(proposal, str(e))

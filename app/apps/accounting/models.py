@@ -42,11 +42,11 @@ class Wallet(BusinessOwnedEntity):
             result = await session.execute(query)
             return result.scalars().all()
 
-    async def get_balance(self):
+    async def get_balance(self, currency: str | None = None):
         async with async_session() as session:
             query = (
                 select(Transaction.balance)
-                .where(Transaction.wallet_id == self.uid)
+                .where(Transaction.wallet_id == self.uid, Transaction.currency == currency)
                 .order_by(Transaction.created_at.desc())
                 .limit(1)
             )
@@ -57,29 +57,26 @@ class Wallet(BusinessOwnedEntity):
         self,
         currency: str | None = None,
         status: StatusEnum | None = None,
-        from_date: datetime | None = None,
-        to_date: datetime | None = None,
-    ):
-        pass
+    ) -> Decimal:
+        current_time = datetime.now()
+        pipeline = [
+            {
+                "$match": {
+                    "wallet_id": self.uid,
+                    "status": "active",
+                    "expires_at": {"$gt": current_time},
+                    "currency": currency,
+                }
+            },
+            {"$group": {"_id": None, "total_amount": {"$sum": "$amount"}}},
+        ]
 
-    # transactions = relationship("Transaction", back_populates="wallet")
-    # holds = relationship("WalletHold", back_populates="wallet")
+        result = await WalletHold.aggregate(pipeline).to_list()
 
-    # @property
-    # def balance(self) -> Decimal:
-    #     latest_transaction: Transaction = (
-    #         self.transactions[-1] if self.transactions else None
-    #     )
-    #     return latest_transaction.balance if latest_transaction else Decimal(0)
-
-    # @property
-    # def held_amount(self) -> Decimal:
-    #     return sum(
-    #         hold.amount
-    #         for hold in self.holds
-    #         if hold.status == "active" and hold.expires_at > datetime.now()
-    #     )
-
+        if result:
+            return Decimal(result[0]["total_amount"])
+        else:
+            return Decimal("0.00")
 
 class WalletHold(BusinessOwnedEntity):
     wallet_id: uuid.UUID
@@ -269,7 +266,7 @@ class TransactionNote(BusinessOwnedEntity):
 
 
 class Participant(BaseModel):
-    participant_id: uuid.UUID
+    # participant_id: uuid.UUID
     amount: Decimal
     wallet_id: uuid.UUID
 
@@ -278,9 +275,10 @@ class Proposal(BusinessOwnedEntity, TaskMixin):
     issuer: Literal["user", "business", "app"] = "business"
     issuer_id: uuid.UUID
     amount: Decimal
-    description: str | None
-    note: str | None
-    status: str | None
+    currency: str 
+    description: str | None = None
+    note: str | None = None
+    # status: str | None
 
     participants: list[Participant]
 
@@ -289,3 +287,8 @@ class Proposal(BusinessOwnedEntity, TaskMixin):
             query = select(Transaction).where(Transaction.proposal_id == self.uid)
             result = await session.execute(query)
             return result.scalars().all()
+
+    async def start_processing(self):
+        from .services import process_proposal
+
+        await process_proposal(self)

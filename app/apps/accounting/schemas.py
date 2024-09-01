@@ -1,7 +1,7 @@
 import uuid
 from datetime import datetime
 from decimal import Decimal
-from typing import Any
+from typing import Any, Literal
 
 from apps.base.schemas import BusinessOwnedEntitySchema
 from pydantic import BaseModel
@@ -62,19 +62,24 @@ class ProposalSchema(BusinessOwnedEntitySchema):
     amount: Decimal
     description: str
     note: str
-    status: str
+    currency: str
+    # status: str
+    task_status: str
     participants: list[Participant]
 
 
 class ProposalCreateSchema(BaseModel):
     amount: Decimal
-    description: str
-    note: str
-    status: str
+    description: str | None = None
+    note: str | None = None
+    currency: str
+    # status: str
+    task_status: Literal["draft", "init"] = "draft"
     participants: list[Participant]
     meta_data: dict[str, Any] | None = None
 
 
 class ProposalUpdateSchema(BaseModel):
-    status: str | None
+    # status: str | None
+    task_status: Literal["init"] | None = None
     meta_data: dict[str, Any] | None = None

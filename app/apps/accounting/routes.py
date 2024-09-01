@@ -1,10 +1,11 @@
 import uuid
 
 from apps.base.schemas import PaginatedResponse
+from apps.base_mongo.routes import AbstractTaskRouter
 from apps.business.routes import AbstractBusinessBaseRouter as AbstractBusinessSQLRouter
 from apps.business_mongo.middlewares import AuthorizationData, AuthorizationException
 from core.exceptions import BaseHTTPException
-from fastapi import Query, Request
+from fastapi import Query, Request, BackgroundTasks
 from server.config import Settings
 
 from .abstract_routers import AbstractAuthRouter
@@ -234,7 +235,10 @@ class TransactionRouter(AbstractBusinessSQLRouter[Transaction, TransactionSchema
         )
 
 
-class ProposalRouter(AbstractAuthRouter[Proposal, ProposalSchema]):
+class ProposalRouter(
+    AbstractAuthRouter[Proposal, ProposalSchema],
+    AbstractTaskRouter[Proposal, ProposalSchema],
+):
     def __init__(self):
         super().__init__(
             model=Proposal,
@@ -274,6 +278,13 @@ class ProposalRouter(AbstractAuthRouter[Proposal, ProposalSchema]):
             response_model=self.update_response_schema,
             status_code=200,
         )
+        self.router.add_api_route(
+            "/{uid:uuid}/start",
+            self.start_item,
+            methods=["POST"],
+            response_model=self.retrieve_response_schema,
+            status_code=200,
+        )
 
     async def get_auth(self, request: Request) -> AuthorizationData:
         auth = await super().get_auth(request)
@@ -293,12 +304,34 @@ class ProposalRouter(AbstractAuthRouter[Proposal, ProposalSchema]):
         return await super().retrieve_item(request, uid)
 
     async def create_item(self, request: Request, data: ProposalCreateSchema):
-        return await super().create_item(request, data)
+        if data.task_status and data.task_status not in ["draft", "init"]:
+            raise BaseHTTPException(
+                400, error="invalid_status", message="Invalid task status"
+            )
+        return await super().create_item(request, data.model_dump())
 
     async def update_item(
         self, request: Request, uid: uuid.UUID, data: ProposalUpdateSchema
     ):
-        return await super().update_item(request, uid, data)
+        if data.task_status and data.task_status != "init":
+            raise BaseHTTPException(
+                400, error="invalid_status", message="Invalid task status"
+            )
+        return await super().update_item(request, uid, data.model_dump())
+
+    async def start_item(
+        self, request: Request, background_tasks: BackgroundTasks, uid: uuid.UUID
+    ):
+        auth = await self.get_auth(request)
+        item: Proposal = await self.model.get_item(uid, auth.business.name)
+        if item is None:
+            raise BaseHTTPException(
+                404, error="not_found", message="Proposal not found"
+            )
+
+        # await item.start_processing(auth.business.name)
+        background_tasks.add_task(item.start_processing)
+        return ProposalSchema(**item.model_dump())
 
 
 wallet_router = WalletRouter().router

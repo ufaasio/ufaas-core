@@ -192,12 +192,12 @@ class AbstractTaskRouter(AbstractBaseRouter[TE, TS]):
         super().__init__(model, user_dependency, schema=schema, *args, **kwargs)
         self.router.add_api_route(
             "/{uid:uuid}/start",
-            self.start,
+            self.start_item,
             methods=["POST"],
-            response_model=self.model,
+            response_model=self.retrieve_response_schema,
         )
 
-    async def start(
+    async def start_item(
         self, request: Request, uid: uuid.UUID, background_tasks: BackgroundTasks
     ):
         user = await self.get_user(request)

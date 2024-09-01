@@ -1,3 +1,4 @@
+from functools import lru_cache
 from apps.base_mongo.models import OwnedEntity
 from apps.business.schemas import Config
 from pydantic import model_validator
@@ -24,10 +25,12 @@ class Business(OwnedEntity):
         return f"https://{self.domain}"
 
     @classmethod
+    @lru_cache
     async def get_by_origin(cls, origin: str):
         return await cls.find_one(cls.domain == origin)
 
     @classmethod
+    @lru_cache
     async def get_by_name(cls, name: str):
         return await cls.find_one(cls.name == name)
 

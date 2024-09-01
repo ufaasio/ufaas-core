@@ -27,7 +27,7 @@ class WalletRouter(AbstractAuthRouter[Wallet, Wallet]):
             schema=WalletSchema,
             user_dependency=None,
             # prefix="/wallets",
-            # tags=["Accounting"],
+            tags=["Accounting"],
         )
 
     def config_schemas(self, schema, **kwargs):
@@ -84,7 +84,7 @@ class WalletHoldRouter(AbstractAuthRouter[WalletHold, WalletHoldSchema]):
             schema=WalletHoldSchema,
             user_dependency=None,
             prefix="/wallet/{wallet_id:uuid}/holds",
-            # tags=["Accounting"],
+            tags=["Hold"],
         )
 
     def config_routes(self, **kwargs):
@@ -140,7 +140,8 @@ class TransactionRouter(AbstractBusinessSQLRouter[Transaction, TransactionSchema
     def __init__(self):
         super().__init__(
             model=Transaction,
-            user_dependency=jwt_access_security,
+            schema=TransactionSchema,
+            user_dependency=None,
             # prefix="/transactions",
             tags=["Accounting"],
         )
@@ -166,9 +167,10 @@ class ProposalRouter(AbstractBusinessBaseRouter[Proposal, ProposalSchema]):
     def __init__(self):
         super().__init__(
             model=Proposal,
-            user_dependency=jwt_access_security,
+            schema=ProposalSchema,
+            user_dependency=None,
             # prefix="/proposal",
-            tags=["Accounting"],
+            # tags=["Accounting"],
         )
 
     def config_routes(self, **kwargs):

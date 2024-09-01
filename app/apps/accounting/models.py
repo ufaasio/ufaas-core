@@ -46,7 +46,9 @@ class Wallet(BusinessOwnedEntity):
         async with async_session() as session:
             query = (
                 select(Transaction.balance)
-                .where(Transaction.wallet_id == self.uid, Transaction.currency == currency)
+                .where(
+                    Transaction.wallet_id == self.uid, Transaction.currency == currency
+                )
                 .order_by(Transaction.created_at.desc())
                 .limit(1)
             )
@@ -77,6 +79,7 @@ class Wallet(BusinessOwnedEntity):
             return Decimal(result[0]["total_amount"])
         else:
             return Decimal("0.00")
+
 
 class WalletHold(BusinessOwnedEntity):
     wallet_id: uuid.UUID
@@ -275,7 +278,7 @@ class Proposal(BusinessOwnedEntity, TaskMixin):
     issuer: Literal["user", "business", "app"] = "business"
     issuer_id: uuid.UUID
     amount: Decimal
-    currency: str 
+    currency: str
     description: str | None = None
     note: str | None = None
     # status: str | None

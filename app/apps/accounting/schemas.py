@@ -69,6 +69,7 @@ class ProposalSchema(BusinessOwnedEntitySchema):
 
 
 class ProposalCreateSchema(BaseModel):
+    user_id: uuid.UUID
     amount: Decimal
     description: str | None = None
     note: str | None = None
@@ -82,4 +83,6 @@ class ProposalCreateSchema(BaseModel):
 class ProposalUpdateSchema(BaseModel):
     # status: str | None
     task_status: Literal["init"] | None = None
+    description: str | None = None
+    note: str | None = None
     meta_data: dict[str, Any] | None = None

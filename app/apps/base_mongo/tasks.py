@@ -2,13 +2,14 @@ import asyncio
 import logging
 import uuid
 from datetime import datetime
+from enum import Enum
 from typing import Any, Callable, Coroutine, Literal, Union
 
 from apps.base.schemas import BaseEntitySchema
 from pydantic import BaseModel, Field
 from singleton import Singleton
 from utils import aionetwork, basic
-from enum import Enum
+
 
 class SignalRegistry(metaclass=Singleton):
     def __init__(self):
@@ -86,12 +87,14 @@ class TaskReferenceList(BaseModel):
             case "parallel":
                 await asyncio.gather(*[task.start_processing() for task in task_items])
 
+
 class TaskStatusEnum(str, Enum):
     draft = "draft"
     init = "init"
     processing = "processing"
     done = "done"
     error = "error"
+
 
 class TaskMixin(BaseModel):
     task_status: Literal["draft", "init", "processing", "done", "error"] = "draft"

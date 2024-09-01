@@ -56,7 +56,7 @@ class AbstractAuthRouter(AbstractBusinessBaseRouter[T, TS]):
         auth = await self.get_auth(request)
         item = self.model(
             business_name=auth.business.name,
-            **data.model_dump(),
+            **data,
         )
         await item.save()
         return self.create_response_schema(**item.model_dump())
@@ -76,7 +76,7 @@ class AbstractAuthRouter(AbstractBusinessBaseRouter[T, TS]):
                 error="item_not_found",
                 message=f"{self.model.__name__.capitalize()} not found",
             )
-        item = await self.model.update_item(item, data.model_dump())
+        item = await self.model.update_item(item, data)
         return item
 
     async def delete_item(self, request: Request, uid: uuid.UUID):
@@ -164,7 +164,7 @@ class AbstractAuthSQLRouter(AbstractBusinessSQLRouter[T_SQL, TS]):
         auth = await self.get_auth(request)
         item = self.model(
             business_name=auth.business.name,
-            **data.model_dump(),
+            **data,
         )
         await item.save()
         return self.create_response_schema(**item.model_dump())
@@ -184,7 +184,7 @@ class AbstractAuthSQLRouter(AbstractBusinessSQLRouter[T_SQL, TS]):
                 error="item_not_found",
                 message=f"{self.model.__name__.capitalize()} not found",
             )
-        item = await self.model.update_item(item, data.model_dump())
+        item = await self.model.update_item(item, data)
         return item
 
     async def delete_item(self, request: Request, uid: uuid.UUID):

@@ -1,7 +1,8 @@
 import uuid
 
-from apps.base_mongo.models import BaseEntity, BusinessEntity
 from pymongo import ASCENDING, IndexModel
+
+from apps.base_mongo.models import BaseEntity, BusinessEntity
 
 
 class Application(BaseEntity):

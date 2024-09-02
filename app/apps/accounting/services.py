@@ -2,11 +2,12 @@ import asyncio
 import logging
 from decimal import Decimal
 
+from pydantic import BaseModel
+from sqlalchemy.ext.asyncio import AsyncSession
+
 from apps.accounting.models import Participant, Proposal, Transaction, Wallet
 from apps.business_mongo.models import Business
-from pydantic import BaseModel
 from server.db import async_session
-from sqlalchemy.ext.asyncio import AsyncSession
 
 
 class ParticipantWallet(BaseModel):
@@ -36,18 +37,11 @@ async def success_proposal(
     **kwargs,
 ):
     async with session.begin():
-        ## Let's process the proposal
-        # create meta_data
-        # get django atomic session
-        # Create transaction for source wallet
-        # Create transaction for each destination wallet
-        # Update proposal status to success
-
         meta_data = proposal.meta_data or {}
 
         for participant in participants_wallets:
             if not await participant_validator(participant, business):
-                return fail_proposal(
+                return await fail_proposal(
                     proposal,
                     f"Participant {participant.wallet.id} is not valid",
                 )
@@ -75,50 +69,87 @@ async def notify_proposal(proposal: Proposal, message: str):
     return
 
 
+# New Functions for Separation of Concerns
+async def get_participant_wallets(
+    participants: list[Participant], business_name: str, currency: str = "IRR"
+) -> list[ParticipantWallet]:
+    async def get_participant_wallet(participant: Participant):
+        wallet: Wallet = await Wallet.get_item(
+            participant.wallet_id, business_name=business_name, user_id=None
+        )
+        balance = await wallet.get_balance(currency)
+        print(f"Balance type: {type(balance)}, value: {balance}")
+        return ParticipantWallet(
+            wallet=wallet, amount=participant.amount, balance=balance
+        )
+
+    return await asyncio.gather(
+        *[get_participant_wallet(participant) for participant in participants]
+    )
+
+
+async def validate_proposal(proposal: Proposal):
+    if proposal.task_status != "init":
+        raise ValueError(f"Proposal {proposal.id} is already processed")
+    if not proposal.participants:
+        raise ValueError("Proposal participants are empty")
+    if not isinstance(proposal.participants, list):
+        raise ValueError("Proposal participants are not a list")
+
+
+async def validate_wallets(
+    proposal: Proposal,
+    participants: list[ParticipantWallet],
+):
+    for participant in participants:
+        if participant.wallet.business_name != proposal.business_name:
+            raise ValueError(
+                f"Business {proposal.business_name} does not have access to source wallet {participant.wallet.id}"
+            )
+        if participant.wallet.is_deleted:
+            raise ValueError(f"Source wallet {participant.wallet.id} is deleted")
+
+
+async def validate_amounts(
+    proposal: Proposal,
+    participants: list[ParticipantWallet],
+):
+    received_amount = sum(
+        [participant.amount for participant in participants if participant.amount > 0]
+    )
+    total_amount = sum([participant.amount for participant in participants])
+    if received_amount != proposal.amount:
+        raise ValueError(
+            f"Total amount {total_amount} is not equal to proposal amount {proposal.amount}"
+        )
+    if total_amount != 0:
+        raise ValueError(f"The sent and received amounts are not equal")
+
+
+async def check_balances(sources: list[ParticipantWallet], currency: str):
+    for source in sources:
+        held_amount = await source.wallet.get_held_amount(currency)
+        if source.balance - held_amount < source.amount:
+            raise ValueError(
+                f"Insufficient balance in source wallet {source.wallet.id}"
+            )
+
+
 async def process_proposal(proposal: Proposal):
     logging.info(f"Processing proposal {proposal.uid}")
     async with async_session() as session:
         try:
-            # Check if the proposal is already processed / Check status
-            if proposal.task_status != "init":
-                logging.error(f"Proposal {proposal.id} is already processed")
-                return
-
+            await validate_proposal(proposal)
             proposal.task_status = "processing"
             await proposal.save()
 
-            # Check if business exists
             business = await Business.get_by_name(proposal.business_name)
             if not business:
-                return fail_proposal(
-                    proposal, f"Business {proposal.business_name} does not exist"
-                )
+                raise ValueError(f"Business {proposal.business_name} does not exist")
 
-            # Check if the proposal recipients are in valid formats
-            if not proposal.participants:
-                return fail_proposal(proposal, "Proposal participants is empty")
-            if type(proposal.participants) != list:
-                return fail_proposal(proposal, "Proposal participants is not a list")
-
-            async def get_participant_wallets(participants: list[Participant]):
-                async def get_participant_wallet(participant: Participant):
-                    wallet: Wallet = await Wallet.get_item(
-                        participant.wallet_id, business.name
-                    )
-                    return ParticipantWallet(
-                        wallet=wallet,
-                        amount=participant.amount,
-                        balance=await wallet.get_balance(proposal.currency),
-                    )
-
-                return await asyncio.gather(
-                    *[
-                        get_participant_wallet(participant)
-                        for participant in participants
-                    ]
-                )
-
-            participants_wallets = await get_participant_wallets(proposal.participants)
+            participants_wallets = await get_participant_wallets(
+                proposal.participants, proposal.business_name, proposal.currency
+            )
             sources = [
                 participant
                 for participant in participants_wallets
@@ -130,70 +161,13 @@ async def process_proposal(proposal: Proposal):
                 if participant.amount > 0
             ]
 
-            # Others check should be atomic
+            await validate_wallets(proposal, participants_wallets)
+            await validate_amounts(proposal, participants_wallets)
+            await check_balances(sources, proposal.currency)
 
-            # Check if the proposal source wallets are exists and active
-            for source in sources:
-                if source.wallet.business_name != proposal.business_name:
-                    return fail_proposal(
-                        proposal,
-                        f"Business {proposal.business_name} does not have access to source wallet {source.wallet.id}",
-                    )
-
-                # Check if the proposal source wallet is active
-                if source.wallet.is_deleted:
-                    return fail_proposal(
-                        proposal, f"Source wallet {source.wallet.id} is deleted"
-                    )
-
-            # Check if the proposal destinations wallets are exists and active
-            for recipient in recipients:
-                if recipient.wallet.business_name != proposal.business_name:
-                    return fail_proposal(
-                        proposal,
-                        f"The destination wallet {recipient.wallet.id} does not belongs to business {proposal.business_name}.",
-                    )
-                if recipient.wallet.is_deleted:
-                    return fail_proposal(
-                        proposal,
-                        f"Destination wallet {recipient.wallet.id} is deleted",
-                    )
-
-            # Check if requester has access to source wallet
-
-            # Check if sent amount equals to sum of all recipient amounts
-            source_amount = sum([source.amount for source in sources])
-            recipient_amount = sum([recipient.amount for recipient in recipients])
-            if -source_amount != recipient_amount:
-                return fail_proposal(
-                    proposal,
-                    f"Total amount {source_amount} is not equal to proposal amount {recipient_amount}",
-                )
-            if proposal.amount != recipient_amount:
-                return fail_proposal(
-                    proposal,
-                    f"Total amount {recipient_amount} is not equal to proposal amount {proposal.amount}",
-                )
-
-            # Check if source wallet has enough balance except the hold amount
-            # todo: parallelize this
-            for source in sources:
-                held_amount = await source.wallet.get_held_amount(proposal.currency)
-                if source.balance - held_amount < source.amount:
-                    return fail_proposal(
-                        proposal,
-                        f"Insufficient balance in source wallet {source.wallet.id}",
-                    )
-
-            await success_proposal(
-                business=business,
-                proposal=proposal,
-                participants_wallets=participants_wallets,
-                session=session,
-            )
+            await success_proposal(business, proposal, participants_wallets, session)
 
         except Exception as e:
             await session.rollback()
             logging.error(f"Error processing proposal {proposal.uid} - {e}")
-            if proposal:
-                fail_proposal(proposal, str(e))
+            await fail_proposal(proposal, str(e))

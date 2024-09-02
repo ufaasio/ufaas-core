@@ -21,6 +21,7 @@ class Settings(metaclass=Singleton):
     project_name: str = os.getenv("PROJECT_NAME", default="UFaaS")
 
     page_max_limit: int = 100
+    coverage_dir: Path = base_dir / "htmlcov"
 
     DATABASE_URL: str = os.getenv(
         "DATABASE_URL", default="sqlite+aiosqlite:///logs/app.db"

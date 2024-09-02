@@ -1,9 +1,10 @@
 from functools import lru_cache
 
-from apps.base_mongo.models import OwnedEntity
-from apps.business.schemas import Config
 from pydantic import model_validator
 from pymongo import ASCENDING, IndexModel
+
+from apps.base_mongo.models import OwnedEntity
+from apps.business.schemas import Config
 from server.config import Settings
 
 

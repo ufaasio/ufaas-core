@@ -1,43 +1,55 @@
-from typing import TypeVar
+# from typing import TypeVar
 
-from core.exceptions import BaseHTTPException
-from fastapi import Request
-from usso import UserData
+# from fastapi import Request
+# from usso import UserData
 
-from .models import BaseEntity, OwnedEntity
+# from core.exceptions import BaseHTTPException
 
-T = TypeVar("T", bound=BaseEntity)
-OT = TypeVar("OT", bound=OwnedEntity)
+# from .models import BaseEntity, OwnedEntity
 
-
-def create_dto(cls: OT):
-    async def dto(request: Request, user: UserData = None, **kwargs):
-        form_data = await request.json()
-        if user:
-            form_data["user_id"] = user.uid
-        return cls(**form_data)
-
-    return dto
+# T = TypeVar("T", bound=BaseEntity)
+# OT = TypeVar("OT", bound=OwnedEntity)
 
 
-def update_dto(cls: OT):
-    async def dto(request: Request, user: UserData = None, **kwargs):
-        uid = request.path_params["uid"]
-        form_data = await request.json()
-        kwargs = {}
-        if user:
-            kwargs["user"] = user
-        item = await cls.get_item(uid, **kwargs)
+# def create_dto(cls: OT):
+#     async def dto(request: Request, user: UserData = None, **kwargs):
+#         form_data = await request.json()
 
-        if not item:
-            raise BaseHTTPException(
-                status_code=404,
-                error="item_not_found",
-                message="Item not found",
-            )
+#         if cls.create_field_set():
+#             for key in form_data.keys():
+#                 if key not in cls.create_field_set():
+#                     form_data.pop(key, None)
 
-        item_data = item.model_dump() | form_data
+#         elif cls.create_exclude_set():
+#             for key in cls.create_exclude_set():
+#                 form_data.pop(key, None)
 
-        return cls(**item_data)
+#         if user:
+#             form_data["user_id"] = user.uid
 
-    return dto
+#         return cls(**form_data)
+
+#     return dto
+
+
+# def update_dto(cls: OT):
+#     async def dto(request: Request, user: UserData = None, **kwargs):
+#         uid = request.path_params["uid"]
+#         form_data = await request.json()
+#         kwargs = {}
+#         if user:
+#             kwargs["user"] = user
+#         item = await cls.get_item(uid, **kwargs)
+
+#         if not item:
+#             raise BaseHTTPException(
+#                 status_code=404,
+#                 error="item_not_found",
+#                 message="Item not found",
+#             )
+
+#         item_data = item.model_dump() | form_data
+
+#         return cls(**item_data)
+
+#     return dto

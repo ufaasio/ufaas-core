@@ -4,14 +4,15 @@ from decimal import Decimal
 from enum import Enum
 from typing import Literal
 
+from beanie import Link
+from pydantic import BaseModel
+from sqlalchemy import select
+from sqlalchemy.orm import Mapped, mapped_column
+
 from apps.base.models import ImmutableBusinessOwnedEntity
 from apps.base_mongo.models import BusinessOwnedEntity
 from apps.base_mongo.tasks import TaskMixin
-from beanie import BackLink, Link
-from pydantic import BaseModel, Field
 from server.db import async_session
-from sqlalchemy import select
-from sqlalchemy.orm import Mapped, mapped_column
 
 
 class StatusEnum(str, Enum):
@@ -21,7 +22,7 @@ class StatusEnum(str, Enum):
 
 
 class Wallet(BusinessOwnedEntity):
-    holds: BackLink["WalletHold"] = Field(original_field="wallet")
+    # holds: BackLink["WalletHold"] | None = Field(default=None, original_field="wallet")
 
     async def get_transactions(
         self,
@@ -269,9 +270,8 @@ class TransactionNote(BusinessOwnedEntity):
 
 
 class Participant(BaseModel):
-    # participant_id: uuid.UUID
-    amount: Decimal
     wallet_id: uuid.UUID
+    amount: Decimal
 
 
 class Proposal(BusinessOwnedEntity, TaskMixin):

@@ -1,6 +1,8 @@
 import uuid
 from typing import Any, Type, TypeVar
 
+from fastapi import Query, Request
+
 from apps.base.models import BusinessEntity as BusinessEntitySQL
 from apps.base.schemas import BusinessEntitySchema, PaginatedResponse
 from apps.base_mongo.models import BusinessEntity
@@ -8,7 +10,6 @@ from apps.business.routes import AbstractBusinessBaseRouter as AbstractBusinessS
 from apps.business_mongo.middlewares import AuthorizationData, authorization_middleware
 from apps.business_mongo.routes import AbstractBusinessBaseRouter
 from core.exceptions import BaseHTTPException
-from fastapi import Query, Request
 from server.config import Settings
 
 T = TypeVar("T", bound=BusinessEntity)

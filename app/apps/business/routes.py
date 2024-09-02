@@ -1,15 +1,16 @@
 import uuid
 from typing import TypeVar
 
+from fastapi import Depends, Query, Request
+from usso.fastapi import jwt_access_security
+
+from apps.base.handlers import create_dto
 from apps.base.models import BusinessEntity
 from apps.base.routes import AbstractBaseRouter
 from apps.base.schemas import BusinessEntitySchema, PaginatedResponse
 from core.exceptions import BaseHTTPException
-from fastapi import Depends, Query, Request
 from server.config import Settings
-from usso.fastapi import jwt_access_security
 
-from .handlers import create_dto_business
 from .middlewares import get_business
 from .models import Business
 from .schemas import BusinessDataCreateSchema, BusinessDataUpdateSchema, BusinessSchema
@@ -65,10 +66,11 @@ class AbstractBusinessBaseRouter(AbstractBaseRouter[T, TS]):
         business: Business = Depends(get_business),
     ):
         user = await self.get_user(request)
-        item_data = await create_dto_business(self.model)(
-            request, user, business_name=business.name
+        item_data: TS = await create_dto(self.create_response_schema)(
+            request, user.uid if user else None, business_name=business.name
         )
         item = await self.model.create_item(item_data.model_dump())
+
         return self.create_response_schema(**item.__dict__)
 
     async def update_item(

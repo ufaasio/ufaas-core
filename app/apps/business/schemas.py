@@ -1,9 +1,10 @@
 import json
 from typing import Any
 
-from apps.base.auth_middlewares import JWTSecret
-from apps.base.schemas import BaseEntitySchema
 from pydantic import BaseModel, model_validator
+
+from apps.base.auth_middlewares import JWTSecret
+from apps.base.schemas import OwnedEntitySchema
 from server.config import Settings
 
 
@@ -15,7 +16,7 @@ class Config(BaseModel):
         return hash(self.model_dump_json())
 
 
-class BusinessSchema(BaseEntitySchema):
+class BusinessSchema(OwnedEntitySchema):
     name: str
     domain: str
 

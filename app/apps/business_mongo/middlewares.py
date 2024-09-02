@@ -1,11 +1,12 @@
 import uuid
 from typing import Literal
 
+from fastapi import Request
+from pydantic import BaseModel
+
 from apps.base.auth_middlewares import UserData, Usso
 from apps.business_mongo.models import Business
 from core.exceptions import BaseHTTPException
-from fastapi import Request
-from pydantic import BaseModel
 
 
 class AuthorizationData(BaseModel):
@@ -19,7 +20,7 @@ class AuthorizationData(BaseModel):
 
 class AuthorizationException(BaseHTTPException):
     def __init__(self, message: str):
-        super().__init__(403, "authorization_error", message)
+        super().__init__(401, "authorization_error", message)
 
 
 async def get_business(

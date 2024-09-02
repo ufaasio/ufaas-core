@@ -1,14 +1,16 @@
 import uuid
 from datetime import datetime
 
+from beanie import Document, Insert, Replace, Save, SaveChanges, Update, before_event
+from pydantic import ConfigDict
+from pymongo import ASCENDING, IndexModel
+
 from apps.base.schemas import (
     BaseEntitySchema,
     BusinessEntitySchema,
     BusinessOwnedEntitySchema,
     OwnedEntitySchema,
 )
-from beanie import Document, Insert, Replace, Save, SaveChanges, Update, before_event
-from pymongo import ASCENDING, IndexModel
 from server.config import Settings
 
 from .tasks import TaskMixin
@@ -146,6 +148,12 @@ class BaseEntity(BaseEntitySchema, Document):
 
     @classmethod
     async def create_item(cls, data: dict):
+        # for key in data.keys():
+        #     if cls.create_exclude_set() and key not in cls.create_field_set():
+        #         data.pop(key, None)
+        #     elif cls.create_exclude_set() and key in cls.create_exclude_set():
+        #         data.pop(key, None)
+
         item = cls(**data)
         await item.save()
         return item
@@ -198,8 +206,8 @@ class BusinessOwnedEntity(BusinessOwnedEntitySchema, BaseEntity):
     ) -> "BusinessOwnedEntity":
         if business_name == None:
             raise ValueError("business_name is required")
-        if user_id == None:
-            raise ValueError("user_id is required")
+        # if user_id == None:
+        #     raise ValueError("user_id is required")
         return await super().get_item(
             uid, business_name=business_name, user_id=user_id, *args, **kwargs
         )
@@ -210,9 +218,7 @@ class BaseEntityTaskMixin(BaseEntity, TaskMixin):
 
 
 class ImmutableBase(BaseEntity):
-
-    class Config:
-        frozen = True
+    model_config = ConfigDict(frozen=True)
 
     @classmethod
     async def update_item(cls, item: "BaseEntity", data: dict):

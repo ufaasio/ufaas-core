@@ -2,12 +2,13 @@ import uuid
 from typing import Any, Generic, Type, TypeVar
 
 import singleton
+from fastapi import APIRouter, BackgroundTasks, Query, Request
+
+from apps.base.handlers import create_dto
 from apps.base.schemas import BaseEntitySchema, PaginatedResponse
 from core.exceptions import BaseHTTPException
-from fastapi import APIRouter, BackgroundTasks, Query, Request
 from server.config import Settings
 
-from .handlers import create_dto
 from .models import BaseEntity, BaseEntityTaskMixin
 
 # Define a type variable
@@ -139,9 +140,11 @@ class AbstractBaseRouter(Generic[T, TS], metaclass=singleton.Singleton):
         data: dict,
     ):
         user = await self.get_user(request)
-        # item_data: TS = await create_dto(self.create_request_schema)(request, user)
-        # item = await self.model.create_item(item_data.model_dump())
-        item: T = await create_dto(self.model)(request, user)
+        item_data: TS = await create_dto(self.create_response_schema)(
+            request, user.uid if user else None
+        )
+        item = await self.model.create_item(item_data.model_dump())
+        # item: T = await create_dto(self.create_request_schema)(request, user)
         await item.save()
         return item
 

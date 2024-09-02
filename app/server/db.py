@@ -2,9 +2,10 @@ from typing import AsyncGenerator
 
 from beanie import init_beanie
 from motor.motor_asyncio import AsyncIOMotorClient
-from server.config import Settings
 from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
 from sqlalchemy.orm import sessionmaker
+
+from server.config import Settings
 from utils.basic import get_all_subclasses
 
 engine = create_async_engine(Settings.DATABASE_URL, future=True, echo=True)

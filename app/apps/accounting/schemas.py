@@ -3,8 +3,9 @@ from datetime import datetime
 from decimal import Decimal
 from typing import Any, Literal
 
-from apps.base.schemas import BusinessOwnedEntitySchema
 from pydantic import BaseModel
+
+from apps.base.schemas import BusinessOwnedEntitySchema
 
 
 class WalletSchema(BusinessOwnedEntitySchema):

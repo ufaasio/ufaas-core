@@ -7,14 +7,18 @@ from pydantic import BaseModel, Field
 
 
 class CoreEntitySchema(BaseModel):
-    created_at: datetime = Field(default_factory=datetime.now, index=True)
+    created_at: datetime = Field(
+        default_factory=datetime.now, json_schema_extra={"index": True}
+    )
     updated_at: datetime = Field(default_factory=datetime.now)
     is_deleted: bool = False
     meta_data: dict[str, Any] | None = None
 
 
 class BaseEntitySchema(CoreEntitySchema):
-    uid: uuid.UUID = Field(default_factory=uuid.uuid4, index=True, unique=True)
+    uid: uuid.UUID = Field(
+        default_factory=uuid.uuid4, json_schema_extra={"index": True, "unique": True}
+    )
 
     @classmethod
     def create_exclude_set(cls) -> list[str]:
@@ -41,11 +45,11 @@ class OwnedEntitySchema(BaseEntitySchema):
 
     @classmethod
     def create_exclude_set(cls) -> list[str]:
-        return ["uid", "created_at", "updated_at", "is_deleted", "user_id"]
+        return super().create_exclude_set() + ["user_id"]
 
     @classmethod
     def update_exclude_set(cls) -> list[str]:
-        return ["uid", "created_at", "updated_at", "user_id"]
+        return super().update_exclude_set() + ["user_id"]
 
 
 class BusinessEntitySchema(BaseEntitySchema):
@@ -53,29 +57,22 @@ class BusinessEntitySchema(BaseEntitySchema):
 
     @classmethod
     def create_exclude_set(cls) -> list[str]:
-        return ["uid", "created_at", "updated_at", "is_deleted", "business_name"]
+        return super().create_exclude_set() + ["business_name"]
 
     @classmethod
     def update_exclude_set(cls) -> list[str]:
-        return ["uid", "created_at", "updated_at", "business_name"]
+        return super().update_exclude_set() + ["business_name"]
 
 
 class BusinessOwnedEntitySchema(OwnedEntitySchema, BusinessEntitySchema):
 
     @classmethod
     def create_exclude_set(cls) -> list[str]:
-        return [
-            "uid",
-            "created_at",
-            "updated_at",
-            "is_deleted",
-            "business_name",
-            "user_id",
-        ]
+        return list(set(super().create_exclude_set() + ["business_name", "user_id"]))
 
     @classmethod
     def update_exclude_set(cls) -> list[str]:
-        return ["uid", "created_at", "updated_at", "business_name", "user_id"]
+        return list(set(super().update_exclude_set() + ["business_name", "user_id"]))
 
 
 class Language(str, Enum):

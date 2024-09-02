@@ -1,6 +1,10 @@
 import uuid
 from typing import TypeVar
 
+from fastapi import Depends, Request
+from usso.fastapi import jwt_access_security
+
+from apps.base.handlers import create_dto
 from apps.base.schemas import BusinessEntitySchema, PaginatedResponse
 from apps.base_mongo.models import BusinessEntity
 from apps.base_mongo.routes import AbstractBaseRouter
@@ -9,11 +13,8 @@ from apps.business.schemas import (
     BusinessDataUpdateSchema,
     BusinessSchema,
 )
-from apps.business_mongo.handlers import create_dto_business
 from core.exceptions import BaseHTTPException
-from fastapi import Depends, Request
 from server.config import Settings
-from usso.fastapi import jwt_access_security
 
 from .middlewares import get_business
 from .models import Business
@@ -70,10 +71,13 @@ class AbstractBusinessBaseRouter(AbstractBaseRouter[T, TS]):
     async def create_item(
         self,
         request: Request,
-        # business: Business = Depends(get_business),
+        business: Business = Depends(get_business),
     ):
         user = await self.get_user(request)
-        item: T = await create_dto_business(self.model)(request, user)
+        item_data: TS = await create_dto(self.create_response_schema)(
+            request, user.uid if user else None, business_name=business.name
+        )
+        item = await self.model.create_item(item_data.model_dump())
 
         await item.save()
         return item
@@ -131,6 +135,12 @@ class BusinessRouter(AbstractBaseRouter[Business, BusinessSchema]):
             user_dependency=jwt_access_security,
             prefix="/businesses",
         )
+
+    def config_schemas(self, schema, **kwargs):
+        super().config_schemas(schema, **kwargs)
+
+        self.create_request_schema = BusinessDataCreateSchema
+        self.update_request_schema = BusinessDataUpdateSchema
 
     async def create_item(
         self,

@@ -2,12 +2,12 @@ import uuid
 from datetime import datetime, timezone
 from typing import Any
 
-from server.db import async_session
 from sqlalchemy import JSON, event, select
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.ext.declarative import as_declarative, declared_attr
-from sqlalchemy.orm import Mapped, declared_attr, mapped_column
+from sqlalchemy.orm import Mapped, as_declarative, declared_attr, mapped_column
 from sqlalchemy.sql import func
+
+from server.db import async_session
 
 # Base = declarative_base()
 
@@ -38,6 +38,22 @@ class BaseEntity:
     is_deleted: Mapped[bool] = mapped_column(default=False)
     meta_data: Mapped[dict | None] = mapped_column(JSON, nullable=True)
     # name: Mapped[str | None] = mapped_column(nullable=True)
+
+    @classmethod
+    def create_exclude_set(cls) -> list[str]:
+        return ["uid", "created_at", "updated_at", "is_deleted"]
+
+    @classmethod
+    def create_field_set(cls) -> list:
+        return []
+
+    @classmethod
+    def update_exclude_set(cls) -> list:
+        return ["uid", "created_at", "updated_at"]
+
+    @classmethod
+    def update_field_set(cls) -> list:
+        return []
 
     @classmethod
     async def get_item(
@@ -181,13 +197,12 @@ class BaseEntity:
 
     @classmethod
     async def update_item(cls, item: "BaseEntity", data: dict):
-        # Todo: check data has valid and permitted keys
         for key, value in data.items():
-            # if type(value) is dict:
-            #     current_value: dict = getattr(item, key)
+            if cls.update_field_set() and key not in cls.update_field_set():
+                continue
+            if cls.update_exclude_set() and key in cls.update_exclude_set():
+                continue
 
-            #     setattr(item, key, current_value | value)
-            # else:
             setattr(item, key, value)
 
         async with async_session() as session:
@@ -214,15 +229,39 @@ class OwnedEntity(BaseEntity):
 
     user_id: Mapped[uuid.UUID] = mapped_column(index=True)
 
+    @classmethod
+    def create_exclude_set(cls) -> list:
+        return super().create_exclude_set() + ["user_id"]
+
+    @classmethod
+    def update_exclude_set(cls) -> list:
+        return super().update_exclude_set() + ["user_id"]
+
 
 class BusinessEntity(BaseEntity):
     __abstract__ = True
 
     business_name: Mapped[str] = mapped_column(index=True)
 
+    @classmethod
+    def create_exclude_set(cls) -> list[str]:
+        return super().create_exclude_set() + ["business_name"]
+
+    @classmethod
+    def update_exclude_set(cls) -> list[str]:
+        return super().update_exclude_set() + ["business_name"]
+
 
 class BusinessOwnedEntity(OwnedEntity, BusinessEntity):
     __abstract__ = True
+
+    @classmethod
+    def create_exclude_set(cls) -> list[str]:
+        return list(set(super().create_exclude_set() + ["business_name", "user_id"]))
+
+    @classmethod
+    def update_exclude_set(cls) -> list[str]:
+        return list(set(super().update_exclude_set() + ["business_name", "user_id"]))
 
 
 class ImmutableBase(BaseEntity):

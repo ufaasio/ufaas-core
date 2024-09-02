@@ -2,8 +2,9 @@ import uuid
 from typing import Any, Generic, Type, TypeVar
 
 import singleton
-from core.exceptions import BaseHTTPException
 from fastapi import APIRouter, Query, Request
+
+from core.exceptions import BaseHTTPException
 from server.config import Settings
 
 from .handlers import create_dto
@@ -132,7 +133,10 @@ class AbstractBaseRouter(Generic[T, TS], metaclass=singleton.Singleton):
         item: dict,
     ):
         user = await self.get_user(request)
-        item_data: TS = await create_dto(self.create_request_schema)(request, user)
+        # TODO self.create_request_schema is not a valid input for create_dto because many times it does not have user_id
+        item_data: TS = await create_dto(self.create_response_schema)(
+            request, user.uid if user else None
+        )
         item = await self.model.create_item(item_data.model_dump())
         return self.create_response_schema(**item.__dict__)
 

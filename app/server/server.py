@@ -4,19 +4,22 @@ from contextlib import asynccontextmanager
 
 import fastapi
 import pydantic
-from core import exceptions
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
+from fastapi.staticfiles import StaticFiles
 from json_advanced import dumps
-from server import config, db
 from usso.exceptions import USSOException
+
+from core import exceptions
+
+from . import config, db
 
 
 @asynccontextmanager
 async def lifespan(app: fastapi.FastAPI):  # type: ignore
     """Initialize application services."""
     await db.init_db()
-    config.Settings().config_logger()
+    config.Settings.config_logger()
 
     logging.info("Startup complete")
     yield
@@ -117,6 +120,15 @@ app.include_router(proposal_router, prefix="/api/v1")
 app.include_router(application_router, prefix="/api/v1")
 
 
+# Mount the htmlcov directory to be served at /coverage
+app.mount(
+    "/coverage", StaticFiles(directory=config.Settings.coverage_dir), name="coverage"
+)
+
+
 @app.get("/api/v1/health")
 async def index():
     return {"status": "ok"}
+
+
+config.Settings.config_logger()

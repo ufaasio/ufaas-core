@@ -47,7 +47,7 @@ async def init_db(mongo_client):
     )
 
 
-@pytest_asyncio.fixture(scope="session")
+@pytest_asyncio.fixture(scope="session", autouse=True)
 async def db(mongo_client):
     Settings.config_logger()
     logging.info("Initializing database")
@@ -56,19 +56,10 @@ async def db(mongo_client):
     yield
     logging.info("Cleaning up database")
 
-    # for model in get_all_subclasses(base_mongo_models.BaseEntity):
-    #     print(f"Deleting all {model}")
-    #     await model.delete_all()
-
 
 @pytest_asyncio.fixture(scope="session")
 async def client() -> AsyncGenerator[httpx.AsyncClient, None]:
     """Fixture to provide an AsyncClient for FastAPI app."""
-    # async with LifespanManager(fastapi_app) as manager:
-    #     async with httpx.AsyncClient(
-    #         transport=httpx.ASGITransport(app=manager.app), base_url="http://test"
-    #     ) as ac:
-    #         yield ac
     async with httpx.AsyncClient(
         app=fastapi_app, base_url="http://test.ufaas.io"
     ) as ac:
@@ -98,10 +89,6 @@ async def auth_headers_business(access_token_business):
 
 @pytest.fixture(scope="session", autouse=True)
 def setup_debugpy():
-    # Check if we should start debugpy
     if os.getenv("DEBUGPY", "False").lower() in ("true", "1", "yes"):
-        print("Starting debugpy for remote debugging...")
-        debugpy.listen(("0.0.0.0", 3020))  # You can change the port if needed
-        print("Waiting for debugger to attach...")
+        debugpy.listen(("0.0.0.0", 3020))
         debugpy.wait_for_client()
-        print("Debugger attached!")

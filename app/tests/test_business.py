@@ -8,9 +8,7 @@ from .constants import StaticData
 
 
 @pytest.mark.asyncio
-async def test_business_list_empty(
-    client: httpx.AsyncClient, db, auth_headers_business
-):
+async def test_business_list_empty(client: httpx.AsyncClient, auth_headers_business):
     # list businesses empty
     response = await client.get("/api/v1/businesses/", headers=auth_headers_business)
 
@@ -22,7 +20,7 @@ async def test_business_list_empty(
 
 
 @pytest.mark.asyncio
-async def test_business_create(client: httpx.AsyncClient, db, auth_headers_business):
+async def test_business_create(client: httpx.AsyncClient, auth_headers_business):
     # create business
     domain = urlparse(str(client.base_url)).netloc
     data = dict(
@@ -43,7 +41,7 @@ async def test_business_create(client: httpx.AsyncClient, db, auth_headers_busin
 
 @pytest.mark.asyncio
 async def test_business_list_with_business(
-    client: httpx.AsyncClient, db, auth_headers_business
+    client: httpx.AsyncClient, auth_headers_business
 ):
     # list business
     response = await client.get("/api/v1/businesses/", headers=auth_headers_business)
@@ -60,7 +58,7 @@ async def test_business_list_with_business(
 
 @pytest.mark.asyncio
 async def test_business_retrieve_no_auth(
-    client: httpx.AsyncClient, db, auth_headers_business
+    client: httpx.AsyncClient, auth_headers_business
 ):
     # retrieve business without access token
     response = await client.get(f"/api/v1/businesses/{StaticData.business_id_1}")
@@ -69,7 +67,7 @@ async def test_business_retrieve_no_auth(
 
 @pytest.mark.asyncio
 async def test_business_retrieve_not_found(
-    client: httpx.AsyncClient, db, auth_headers_business
+    client: httpx.AsyncClient, auth_headers_business
 ):
     # retrieve business not found
     response = await client.get(
@@ -79,7 +77,7 @@ async def test_business_retrieve_not_found(
 
 
 @pytest.mark.asyncio
-async def test_business_retrieve(client: httpx.AsyncClient, db, auth_headers_business):
+async def test_business_retrieve(client: httpx.AsyncClient, auth_headers_business):
     # retrieve business
     response = await client.get(
         f"/api/v1/businesses/{StaticData.business_id_1}", headers=auth_headers_business
@@ -91,7 +89,7 @@ async def test_business_retrieve(client: httpx.AsyncClient, db, auth_headers_bus
 
 
 @pytest.mark.asyncio
-async def test_business_update(client: httpx.AsyncClient, db, auth_headers_business):
+async def test_business_update(client: httpx.AsyncClient, auth_headers_business):
     # update business
     data = dict(meta_data={"key": "value"})
     response = await client.patch(

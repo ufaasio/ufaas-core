@@ -9,7 +9,6 @@ from apps.base_mongo.models import BusinessEntity
 from apps.business.routes import AbstractBusinessBaseRouter as AbstractBusinessSQLRouter
 from apps.business_mongo.middlewares import AuthorizationData, authorization_middleware
 from apps.business_mongo.routes import AbstractBusinessBaseRouter
-from core.exceptions import BaseHTTPException
 from server.config import Settings
 
 T = TypeVar("T", bound=BusinessEntity)
@@ -42,15 +41,9 @@ class AbstractAuthRouter(AbstractBusinessBaseRouter[T, TS]):
 
     async def retrieve_item(self, request: Request, uid: uuid.UUID):
         auth = await self.get_auth(request)
-        item = await self.model.get_item(
-            uid=uid, user_id=auth.user_id, business_name=auth.business.name
+        item = await self.get_item(
+            uid, user_id=auth.user_id, business_name=auth.business.name
         )
-        if item is None:
-            raise BaseHTTPException(
-                status_code=404,
-                error="item_not_found",
-                message=f"{self.model.__name__.capitalize()} not found",
-            )
         return item
 
     async def create_item(self, request: Request, data: dict):
@@ -64,35 +57,18 @@ class AbstractAuthRouter(AbstractBusinessBaseRouter[T, TS]):
 
     async def update_item(self, request: Request, uid: uuid.UUID, data: dict):
         auth = await self.get_auth(request)
-
-        item = await self.model.get_item(
-            uid,
-            business_name=auth.business.name,
-            user_id=auth.user_id,  # if auth.user_id else auth.user.uid
+        item = await self.get_item(
+            uid, user_id=auth.user_id, business_name=auth.business.name
         )
 
-        if item is None:
-            raise BaseHTTPException(
-                status_code=404,
-                error="item_not_found",
-                message=f"{self.model.__name__.capitalize()} not found",
-            )
         item = await self.model.update_item(item, data)
         return item
 
     async def delete_item(self, request: Request, uid: uuid.UUID):
         auth = await self.get_auth(request)
-
-        item = await self.model.get_item(
-            uid, business_name=auth.business.name, user_id=auth.user_id
+        item = await self.get_item(
+            uid, user_id=auth.user_id, business_name=auth.business.name
         )
-        if item is None:
-            raise BaseHTTPException(
-                status_code=404,
-                error="item_not_found",
-                message=f"{self.model.__name__.capitalize()} not found",
-            )
-
         item = await self.model.delete_item(item)
         return item
 
@@ -149,16 +125,9 @@ class AbstractAuthSQLRouter(AbstractBusinessSQLRouter[T_SQL, TS]):
         uid: uuid.UUID,
     ):
         auth = await self.get_auth(request)
-        item = await self.model.get_item(
-            uid, user_id=auth.user_id, business_name=auth.business.name
+        item = await self.get_item(
+            request, uid, user_id=auth.user_id, business_name=auth.business.name
         )
-
-        if item is None:
-            raise BaseHTTPException(
-                status_code=404,
-                error="item_not_found",
-                message=f"{self.model.__name__.capitalize()} not found",
-            )
         return self.retrieve_response_schema(**item.__dict__)
 
     async def create_item(self, request: Request, data: dict):
@@ -172,34 +141,16 @@ class AbstractAuthSQLRouter(AbstractBusinessSQLRouter[T_SQL, TS]):
 
     async def update_item(self, request: Request, uid: uuid.UUID, data: dict):
         auth = await self.get_auth(request)
-
-        item = await self.model.get_item(
-            uid,
-            business_name=auth.business.name,
-            user_id=auth.user_id,  # if auth.user_id else auth.user.uid
+        item = await self.get_item(
+            request, uid, user_id=auth.user_id, business_name=auth.business.name
         )
-
-        if item is None:
-            raise BaseHTTPException(
-                status_code=404,
-                error="item_not_found",
-                message=f"{self.model.__name__.capitalize()} not found",
-            )
         item = await self.model.update_item(item, data)
         return item
 
     async def delete_item(self, request: Request, uid: uuid.UUID):
         auth = await self.get_auth(request)
-
-        item = await self.model.get_item(
-            uid, business_name=auth.business.name, user_id=auth.user_id
+        item = await self.get_item(
+            request, uid, user_id=auth.user_id, business_name=auth.business.name
         )
-        if item is None:
-            raise BaseHTTPException(
-                status_code=404,
-                error="item_not_found",
-                message=f"{self.model.__name__.capitalize()} not found",
-            )
-
         item = await self.model.delete_item(item)
         return item

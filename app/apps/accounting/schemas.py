@@ -31,6 +31,7 @@ class WalletHoldSchema(BusinessOwnedEntitySchema):
     amount: Decimal
     expires_at: datetime
     status: str
+    description: str | None = None
 
     @field_validator("amount", mode="before")
     def validate_amount(cls, value):
@@ -44,14 +45,16 @@ class WalletHoldSchema(BusinessOwnedEntitySchema):
 class WalletHoldCreateSchema(BaseModel):
     amount: Decimal
     expires_at: datetime
-    status: str
+    status: str = "active"
     meta_data: dict[str, Any] | None = None
+    description: str | None = None
 
 
 class WalletHoldUpdateSchema(BaseModel):
-    expires_at: datetime | None
-    status: str | None
+    expires_at: datetime | None = None
+    status: str | None = None
     meta_data: dict[str, Any] | None = None
+    description: str | None = None
 
 
 class TransactionSchema(BusinessOwnedEntitySchema):
@@ -61,7 +64,7 @@ class TransactionSchema(BusinessOwnedEntitySchema):
     currency: str
     balance: Decimal
     description: str | None = None
-    note: str | None = None
+    note: str | None
 
 
 class Participant(BaseModel):
@@ -80,8 +83,8 @@ class Participant(BaseModel):
 class ProposalSchema(BusinessOwnedEntitySchema):
     issuer_id: uuid.UUID
     amount: Decimal
-    description: str
-    note: str
+    description: str | None = None
+    note: str | None = None
     currency: str
     # status: str
     task_status: str
@@ -97,12 +100,10 @@ class ProposalSchema(BusinessOwnedEntitySchema):
 
 
 class ProposalCreateSchema(BaseModel):
-    user_id: uuid.UUID
     amount: Decimal
     description: str | None = None
     note: str | None = None
     currency: str
-    # status: str
     task_status: Literal["draft", "init"] = "draft"
     participants: list[Participant]
     meta_data: dict[str, Any] | None = None

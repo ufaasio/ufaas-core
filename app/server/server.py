@@ -107,6 +107,7 @@ from apps.accounting.routes import (
     proposal_router,
     transaction_router,
     wallet_hold_router,
+    wallet_hold_router_business,
     wallet_router,
 )
 from apps.applications.routes import router as application_router
@@ -115,6 +116,7 @@ from apps.business_mongo.routes import router as business_router
 app.include_router(business_router, prefix="/api/v1")
 app.include_router(wallet_router, prefix="/api/v1")
 app.include_router(wallet_hold_router, prefix="/api/v1")
+app.include_router(wallet_hold_router_business, prefix="/api/v1")
 app.include_router(transaction_router, prefix="/api/v1")
 app.include_router(proposal_router, prefix="/api/v1")
 app.include_router(application_router, prefix="/api/v1")

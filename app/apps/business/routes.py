@@ -8,7 +8,6 @@ from apps.base.handlers import create_dto
 from apps.base.models import BusinessEntity
 from apps.base.routes import AbstractBaseRouter
 from apps.base.schemas import BusinessEntitySchema, PaginatedResponse
-from core.exceptions import BaseHTTPException
 from server.config import Settings
 
 from .middlewares import get_business
@@ -50,14 +49,7 @@ class AbstractBusinessBaseRouter(AbstractBaseRouter[T, TS]):
     ):
         user = await self.get_user(request)
         user_id = user.uid if user else None
-        item = await self.model.get_item(uid, user_id, business.name)
-
-        if item is None:
-            raise BaseHTTPException(
-                status_code=404,
-                error="item_not_found",
-                message=f"{self.model.__name__.capitalize()} not found",
-            )
+        item = self.get_item(uid, user_id=user_id, business_name=business.name)
         return self.retrieve_response_schema(**item.__dict__)
 
     async def create_item(
@@ -82,14 +74,7 @@ class AbstractBusinessBaseRouter(AbstractBaseRouter[T, TS]):
     ):
         user = await self.get_user(request)
         user_id = user.uid if user else None
-        item = await self.model.get_item(uid, user_id, business.name)
-
-        if not item:
-            raise BaseHTTPException(
-                status_code=404,
-                error="item_not_found",
-                message=f"item not found",
-            )
+        item = self.get_item(uid, user_id=user_id, business_name=business.name)
 
         item = await self.model.update_item(item, data)
         return self.update_response_schema(**item.__dict__)
@@ -102,14 +87,7 @@ class AbstractBusinessBaseRouter(AbstractBaseRouter[T, TS]):
     ):
         user = await self.get_user(request)
         user_id = user.uid if user else None
-        item = await self.model.get_item(uid, user_id, business.name)
-
-        if not item:
-            raise BaseHTTPException(
-                status_code=404,
-                error="item_not_found",
-                message=f"{self.model.__name__.capitalize()} not found",
-            )
+        item = self.get_item(uid, user_id=user_id, business_name=business.name)
 
         item = await self.model.delete_item(item)
         return self.delete_response_schema(**item.__dict__)

@@ -5,7 +5,13 @@ from decimal import Decimal
 from pydantic import BaseModel
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from apps.accounting.models import Participant, Proposal, Transaction, Wallet
+from apps.accounting.models import (
+    Participant,
+    Proposal,
+    Transaction,
+    TransactionNote,
+    Wallet,
+)
 from apps.business_mongo.models import Business
 from server.db import async_session
 
@@ -53,9 +59,19 @@ async def success_proposal(
                 # note=proposal.note,
             )
             session.add(transaction)
-        proposal.task_status = "completed"
-        await proposal.save_report("Proposal processed successfully", emit=False)
-        await proposal.save()
+
+    if proposal.note:
+        for transaction in await proposal.get_transactions():
+            note = TransactionNote(
+                business_name=proposal.business_name,
+                user_id=participant.wallet.user_id,
+                transaction_id=transaction.uid,
+                note=proposal.note,
+            )
+            await note.save()
+    proposal.task_status = "completed"
+    await proposal.save_report("Proposal processed successfully", emit=False)
+    await proposal.save()
 
 
 # New Functions for Separation of Concerns

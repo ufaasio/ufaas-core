@@ -3,7 +3,6 @@ from datetime import datetime, timezone
 from typing import Any
 
 from sqlalchemy import JSON, event, select
-from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import Mapped, as_declarative, declared_attr, mapped_column
 from sqlalchemy.sql import func
 
@@ -141,7 +140,6 @@ class BaseEntity:
     @classmethod
     async def list_total_combined(
         cls,
-        session: AsyncSession,
         user_id: uuid.UUID = None,
         business_name: str = None,
         offset: int = 0,
@@ -149,7 +147,6 @@ class BaseEntity:
         is_deleted: bool = False,
     ) -> tuple[list["BaseEntity"], int]:
         items = await cls.list_items(
-            session,
             user_id=user_id,
             business_name=business_name,
             offset=offset,
@@ -157,7 +154,7 @@ class BaseEntity:
             is_deleted=is_deleted,
         )
         total = await cls.total_count(
-            session, user_id=user_id, business_name=business_name, is_deleted=is_deleted
+            user_id=user_id, business_name=business_name, is_deleted=is_deleted
         )
         return items, total
 

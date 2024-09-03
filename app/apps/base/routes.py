@@ -87,6 +87,24 @@ class AbstractBaseRouter(Generic[T, TS], metaclass=singleton.Singleton):
             # status_code=204,
         )
 
+    async def get_item(
+        self,
+        uid: uuid.UUID,
+        user_id: uuid.UUID = None,
+        business_name: str = None,
+        **kwargs,
+    ):
+        item = await self.model.get_item(
+            uid, user_id=user_id, business_name=business_name, **kwargs
+        )
+        if item is None:
+            raise BaseHTTPException(
+                status_code=404,
+                error="item_not_found",
+                message=f"{self.model.__name__.capitalize()} not found",
+            )
+        return item
+
     async def get_user(self, request: Request, *args, **kwargs):
         if self.user_dependency is None:
             return None
@@ -117,14 +135,7 @@ class AbstractBaseRouter(Generic[T, TS], metaclass=singleton.Singleton):
     ):
         user = await self.get_user(request)
         user_id = user.uid if user else None
-        item = await self.model.get_item(uid, user_id)
-
-        if item is None:
-            raise BaseHTTPException(
-                status_code=404,
-                error="item_not_found",
-                message=f"{self.model.__name__.capitalize()} not found",
-            )
+        item = self.get_item(uid, user_id=user_id)
         return self.retrieve_response_schema(**item.__dict__)
 
     async def create_item(
@@ -148,15 +159,7 @@ class AbstractBaseRouter(Generic[T, TS], metaclass=singleton.Singleton):
     ):
         user = await self.get_user(request)
         user_id = user.uid if user else None
-        item = await self.model.get_item(uid, user_id)
-
-        if not item:
-            raise BaseHTTPException(
-                status_code=404,
-                error="item_not_found",
-                message=f"{self.model.__name__.capitalize()} not found",
-            )
-
+        item = self.get_item(uid, user_id=user_id)
         item = await self.model.update_item(item, data)
         return self.update_response_schema(**item.__dict__)
 
@@ -167,14 +170,6 @@ class AbstractBaseRouter(Generic[T, TS], metaclass=singleton.Singleton):
     ):
         user = await self.get_user(request)
         user_id = user.uid if user else None
-        item = await self.model.get_item(uid, user_id)
-
-        if not item:
-            raise BaseHTTPException(
-                status_code=404,
-                error="item_not_found",
-                message=f"{self.model.__name__.capitalize()} not found",
-            )
-
+        item = self.get_item(uid, user_id=user_id)
         item = await self.model.delete_item(item)
         return self.delete_response_schema(**item.__dict__)

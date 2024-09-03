@@ -66,7 +66,7 @@ class Wallet(BusinessOwnedEntity):
                 .distinct()
             )
             result = await session.execute(query)
-            return [item[0] for item in result.scalars().all()]
+            return result.scalars().all()
 
     async def get_balance(self, currency: str | None = None) -> dict[str, Decimal]:
         from server.db import async_session
@@ -121,7 +121,7 @@ class WalletHold(BusinessOwnedEntity):
     expires_at: datetime
     status: StatusEnum
     currency: str
-    description: str | None
+    description: str | None = None
     wallet: Link[Wallet]
 
     @field_validator("amount", mode="before")

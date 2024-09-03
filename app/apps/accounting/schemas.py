@@ -3,16 +3,17 @@ from datetime import datetime
 from decimal import Decimal
 from typing import Any, Literal
 
-from pydantic import BaseModel
+from pydantic import BaseModel, field_validator
 
 from apps.base.schemas import BusinessOwnedEntitySchema
 
 
 class WalletSchema(BusinessOwnedEntitySchema):
-    balance: Decimal
-    # held_amount: Decimal
-    # transactions: list[TransactionSchema] = []
-    # proposals: list[ProposalSchema] = []
+    pass
+
+
+class WalletDetailSchema(BusinessOwnedEntitySchema):
+    balance: dict[str, Decimal] = {}
 
 
 class WalletCreateSchema(BaseModel):
@@ -30,6 +31,14 @@ class WalletHoldSchema(BusinessOwnedEntitySchema):
     amount: Decimal
     expires_at: datetime
     status: str
+
+    @field_validator("amount", mode="before")
+    def validate_amount(cls, value):
+        from bson.decimal128 import Decimal128
+
+        if type(value) == Decimal128:
+            return Decimal(value.to_decimal())
+        return value
 
 
 class WalletHoldCreateSchema(BaseModel):
@@ -51,11 +60,21 @@ class TransactionSchema(BusinessOwnedEntitySchema):
     amount: Decimal
     currency: str
     balance: Decimal
-    description: str
-    note: str
+    description: str | None = None
+    note: str | None = None
 
 
-from .models import Participant
+class Participant(BaseModel):
+    wallet_id: uuid.UUID
+    amount: Decimal
+
+    @field_validator("amount", mode="before")
+    def validate_amount(cls, value):
+        from bson.decimal128 import Decimal128
+
+        if type(value) == Decimal128:
+            return Decimal(value.to_decimal())
+        return value
 
 
 class ProposalSchema(BusinessOwnedEntitySchema):
@@ -67,6 +86,14 @@ class ProposalSchema(BusinessOwnedEntitySchema):
     # status: str
     task_status: str
     participants: list[Participant]
+
+    @field_validator("amount", mode="before")
+    def validate_amount(cls, value):
+        from bson.decimal128 import Decimal128
+
+        if type(value) == Decimal128:
+            return Decimal(value.to_decimal())
+        return value
 
 
 class ProposalCreateSchema(BaseModel):

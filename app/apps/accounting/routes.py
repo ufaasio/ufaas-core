@@ -17,6 +17,7 @@ from .schemas import (
     ProposalUpdateSchema,
     TransactionSchema,
     WalletCreateSchema,
+    WalletDetailSchema,
     WalletHoldCreateSchema,
     WalletHoldSchema,
     WalletHoldUpdateSchema,
@@ -37,7 +38,7 @@ class WalletRouter(AbstractAuthRouter[Wallet, WalletSchema]):
 
     def config_schemas(self, schema, **kwargs):
         super().config_schemas(schema)
-        self.retrieve_response_schema = WalletSchema
+        self.retrieve_response_schema = WalletDetailSchema
         self.create_request_schema = WalletCreateSchema
         self.update_request_schema = WalletUpdateSchema
 
@@ -56,7 +57,7 @@ class WalletRouter(AbstractAuthRouter[Wallet, WalletSchema]):
 
         items = [
             await self.model.create_item(
-                user_id=auth.user_id, business_name=auth.business.name
+                dict(user_id=auth.user_id, business_name=auth.business.name)
             )
         ]
         total = 1

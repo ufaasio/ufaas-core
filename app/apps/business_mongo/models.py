@@ -1,5 +1,3 @@
-from functools import lru_cache
-
 from pydantic import model_validator
 from pymongo import ASCENDING, IndexModel
 
@@ -27,12 +25,10 @@ class Business(OwnedEntity):
         return f"https://{self.domain}"
 
     @classmethod
-    @lru_cache
     async def get_by_origin(cls, origin: str):
         return await cls.find_one(cls.domain == origin)
 
     @classmethod
-    @lru_cache
     async def get_by_name(cls, name: str):
         return await cls.find_one(cls.name == name)
 
@@ -43,3 +39,22 @@ class Business(OwnedEntity):
             data["domain"] = business_name_domain
 
         return data
+
+    @classmethod
+    async def create_item(cls, data: dict):
+        business = await super().create_item(data)
+        await business.create_wallet()
+        return business
+
+    async def create_wallet(self) -> bool:
+        from apps.accounting.models import Wallet
+
+        wallet = await Wallet.create_item(
+            {
+                # "uid": self.uid,
+                "user_id": self.user_id,
+                "business_name": self.name,
+            }
+        )
+
+        return bool(wallet)

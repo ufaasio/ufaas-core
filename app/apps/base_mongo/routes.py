@@ -92,6 +92,24 @@ class AbstractBaseRouter(Generic[T, TS], metaclass=singleton.Singleton):
             # status_code=204,
         )
 
+    async def get_item(
+        self,
+        uid: uuid.UUID,
+        user_id: uuid.UUID = None,
+        business_name: str = None,
+        **kwargs,
+    ):
+        item = await self.model.get_item(
+            uid, user_id=user_id, business_name=business_name, **kwargs
+        )
+        if item is None:
+            raise BaseHTTPException(
+                status_code=404,
+                error="item_not_found",
+                message=f"{self.model.__name__.capitalize()} not found",
+            )
+        return item
+
     async def get_user(self, request: Request, *args, **kwargs):
         if self.user_dependency is None:
             return None
@@ -125,13 +143,7 @@ class AbstractBaseRouter(Generic[T, TS], metaclass=singleton.Singleton):
     ):
         user = await self.get_user(request)
         user_id = user.uid if user else None
-        item = await self.model.get_item(uid, user_id=user_id)
-        if item is None:
-            raise BaseHTTPException(
-                status_code=404,
-                error="item_not_found",
-                message=f"{self.model.__name__.capitalize()} not found",
-            )
+        item = await self.get_item(uid, user_id=user_id)
         return item
 
     async def create_item(
@@ -141,7 +153,7 @@ class AbstractBaseRouter(Generic[T, TS], metaclass=singleton.Singleton):
     ):
         user = await self.get_user(request)
         item_data: TS = await create_dto(self.create_response_schema)(
-            request, user.uid if user else None
+            request, user_id=user.uid if user else None
         )
         item = await self.model.create_item(item_data.model_dump())
         # item: T = await create_dto(self.create_request_schema)(request, user)
@@ -156,14 +168,7 @@ class AbstractBaseRouter(Generic[T, TS], metaclass=singleton.Singleton):
     ):
         user = await self.get_user(request)
         user_id = user.uid if user else None
-        item = await self.model.get_item(uid, user_id=user_id)
-
-        if item is None:
-            raise BaseHTTPException(
-                status_code=404,
-                error="item_not_found",
-                message=f"{self.model.__name__.capitalize()} not found",
-            )
+        item = await self.get_item(uid, user_id=user_id)
         # item = await update_dto(self.model)(request, user)
         item = await self.model.update_item(item, data)
         return item
@@ -175,14 +180,7 @@ class AbstractBaseRouter(Generic[T, TS], metaclass=singleton.Singleton):
     ):
         user = await self.get_user(request)
         user_id = user.uid if user else None
-        item = await self.model.get_item(uid, user_id=user_id)
-
-        if not item:
-            raise BaseHTTPException(
-                status_code=404,
-                error="item_not_found",
-                message=f"{self.model.__name__.capitalize()} not found",
-            )
+        item = await self.get_item(uid, user_id=user_id)
 
         item = await self.model.delete_item(item)
         return item
@@ -205,13 +203,7 @@ class AbstractTaskRouter(AbstractBaseRouter[TE, TS]):
     ):
         user = await self.get_user(request)
         user_id = user.uid if user else None
-        item: TE = await self.model.get_item(uid, user_id=user_id)
-        if item is None:
-            raise BaseHTTPException(
-                status_code=404,
-                error="item_not_found",
-                message=f"{self.model.__name__.capitalize()} not found",
-            )
+        item: TE = await self.get_item(uid, user_id=user_id)
         background_tasks.add_task(item.start_processing)
         return item.model_dump()
 

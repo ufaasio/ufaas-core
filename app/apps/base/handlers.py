@@ -11,7 +11,11 @@ OT = TypeVar("OT", bound=OwnedEntitySchema)
 
 def create_dto(cls: OT):
     async def dto(
-        request: Request, user_id: uuid.UUID = None, business_name: str = None, **kwargs
+        request: Request,
+        *,
+        user_id: uuid.UUID = None,
+        business_name: str = None,
+        **kwargs
     ):
         form_data = await request.json()
 

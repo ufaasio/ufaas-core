@@ -23,7 +23,7 @@ class SignalRegistry(metaclass=Singleton):
 class TaskLogRecord(BaseModel):
     reported_at: datetime = Field(default_factory=datetime.now)
     message: str
-    task_status: Literal["draft", "init", "processing", "done", "error"]
+    task_status: Literal["draft", "init", "processing", "completed", "error"]
     duration: int = 0
     data: dict | None = None
 
@@ -93,12 +93,12 @@ class TaskStatusEnum(str, Enum):
     draft = "draft"
     init = "init"
     processing = "processing"
-    done = "done"
+    completed = "completed"
     error = "error"
 
 
 class TaskMixin(BaseModel):
-    task_status: Literal["draft", "init", "processing", "done", "error"] = "draft"
+    task_status: Literal["draft", "init", "processing", "completed", "error"] = "draft"
     task_report: str | None = None
     task_progress: int = -1
     task_logs: list[TaskLogRecord] = []
@@ -120,10 +120,10 @@ class TaskMixin(BaseModel):
 
     @classmethod
     async def emit_signals(cls, task_instance, **kwargs):
-        if task_instance.metadata:
-            webhook = task_instance.metadata.get(
+        if task_instance.meta_data:
+            webhook = task_instance.meta_data.get(
                 "webhook"
-            ) or task_instance.metadata.get("webhook_url")
+            ) or task_instance.meta_data.get("webhook_url")
             webhook_signals = [
                 aionetwork.aio_request(
                     method="post",

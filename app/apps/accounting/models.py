@@ -5,14 +5,15 @@ from enum import Enum
 from typing import Literal
 
 from beanie import Link
-from pydantic import BaseModel
+from pydantic import field_validator
 from sqlalchemy import select
 from sqlalchemy.orm import Mapped, mapped_column
 
 from apps.base.models import ImmutableBusinessOwnedEntity
 from apps.base_mongo.models import BusinessOwnedEntity
 from apps.base_mongo.tasks import TaskMixin
-from server.db import async_session
+
+from .schemas import Participant
 
 
 class StatusEnum(str, Enum):
@@ -22,7 +23,17 @@ class StatusEnum(str, Enum):
 
 
 class Wallet(BusinessOwnedEntity):
-    # holds: BackLink["WalletHold"] | None = Field(default=None, original_field="wallet")
+
+    async def get_holds(
+        self, currency: str | None = None, status: StatusEnum | None = StatusEnum.ACTIVE
+    ):
+        return await WalletHold.get_holds(
+            user_id=self.user_id,
+            business_name=self.business_name,
+            wallet_id=self.uid,
+            currency=currency,
+            status=status,
+        )
 
     async def get_transactions(
         self,
@@ -31,6 +42,8 @@ class Wallet(BusinessOwnedEntity):
         offset: int = 0,
         limit: int = 20,
     ):
+        from server.db import async_session
+
         base_query = [Transaction.wallet_id == self.uid]
         if to_date is None:
             to_date = datetime.now()
@@ -43,7 +56,27 @@ class Wallet(BusinessOwnedEntity):
             result = await session.execute(query)
             return result.scalars().all()
 
-    async def get_balance(self, currency: str | None = None):
+    async def get_currencies(self):
+        from server.db import async_session
+
+        async with async_session() as session:
+            query = (
+                select(Transaction.currency)
+                .where(Transaction.wallet_id == self.uid)
+                .distinct()
+            )
+            result = await session.execute(query)
+            return [item[0] for item in result.scalars().all()]
+
+    async def get_balance(self, currency: str | None = None) -> dict[str, Decimal]:
+        from server.db import async_session
+
+        balance = {}
+        if currency is None:
+            for currency in await self.get_currencies():
+                balance.update(await self.get_balance(currency))
+            return balance
+
         async with async_session() as session:
             query = (
                 select(Transaction.balance)
@@ -54,7 +87,7 @@ class Wallet(BusinessOwnedEntity):
                 .limit(1)
             )
             result = await session.execute(query)
-            return result.scalars().one_or_none() or Decimal(0)
+            return {currency: result.scalars().one_or_none() or Decimal(0)}
 
     async def get_held_amount(
         self,
@@ -90,6 +123,14 @@ class WalletHold(BusinessOwnedEntity):
     currency: str
     description: str | None
     wallet: Link[Wallet]
+
+    @field_validator("amount", mode="before")
+    def validate_amount(cls, value):
+        from bson.decimal128 import Decimal128
+
+        if type(value) == Decimal128:
+            return Decimal(value.to_decimal())
+        return value
 
     @classmethod
     def get_holds_query(
@@ -269,11 +310,6 @@ class TransactionNote(BusinessOwnedEntity):
     note: str
 
 
-class Participant(BaseModel):
-    wallet_id: uuid.UUID
-    amount: Decimal
-
-
 class Proposal(BusinessOwnedEntity, TaskMixin):
     issuer: Literal["user", "business", "app"] = "business"
     issuer_id: uuid.UUID
@@ -285,7 +321,17 @@ class Proposal(BusinessOwnedEntity, TaskMixin):
 
     participants: list[Participant]
 
+    @field_validator("amount", mode="before")
+    def validate_amount(cls, value):
+        from bson.decimal128 import Decimal128
+
+        if type(value) == Decimal128:
+            return Decimal(value.to_decimal())
+        return value
+
     async def get_transactions(self):
+        from server.db import async_session
+
         async with async_session() as session:
             query = select(Transaction).where(Transaction.proposal_id == self.uid)
             result = await session.execute(query)

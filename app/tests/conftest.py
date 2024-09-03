@@ -7,7 +7,6 @@ import httpx
 import pytest
 import pytest_asyncio
 from beanie import init_beanie
-from mongomock_motor import AsyncMongoMockClient
 
 from apps.base_mongo import models as base_mongo_models
 from server.config import Settings
@@ -16,11 +15,32 @@ from utils.basic import get_all_subclasses
 
 from .constants import StaticData
 
+# @pytest.fixture(scope="session", autouse=True)
+# def event_loop():
+#     loop = asyncio.new_event_loop()
+#     yield loop
+#     loop.close()
+
+
+@pytest.fixture(scope="session")
+def mongo_client():
+    from mongomock_motor import AsyncMongoMockClient
+
+    client = AsyncMongoMockClient()
+    yield client
+
+    # from testcontainers.mongodb import MongoDbContainer
+    # from motor.motor_asyncio import AsyncIOMotorClient
+
+    # with MongoDbContainer("mongo:latest") as mongo:
+    #     mongo_uri = mongo.get_connection_url()
+    #     client = AsyncIOMotorClient(mongo_uri)
+    #     yield client
+
 
 # Async setup function to initialize the database with Beanie
-async def init_db():
-    client = AsyncMongoMockClient()
-    database = client.get_database("test_db")
+async def init_db(mongo_client):
+    database = mongo_client.get_database("test_db")
     await init_beanie(
         database=database,
         document_models=get_all_subclasses(base_mongo_models.BaseEntity),
@@ -28,10 +48,10 @@ async def init_db():
 
 
 @pytest_asyncio.fixture(scope="session")
-async def db():
+async def db(mongo_client):
     Settings.config_logger()
     logging.info("Initializing database")
-    await init_db()
+    await init_db(mongo_client)
     logging.info("Database initialized")
     yield
     logging.info("Cleaning up database")
@@ -49,18 +69,31 @@ async def client() -> AsyncGenerator[httpx.AsyncClient, None]:
     #         transport=httpx.ASGITransport(app=manager.app), base_url="http://test"
     #     ) as ac:
     #         yield ac
-    async with httpx.AsyncClient(app=fastapi_app, base_url="http://test") as ac:
+    async with httpx.AsyncClient(
+        app=fastapi_app, base_url="http://test.ufaas.io"
+    ) as ac:
         yield ac
 
 
 @pytest_asyncio.fixture(scope="session")
-async def access_token():
-    data = {
-        "refresh_token": StaticData.refresh_token,
-    }
+async def access_token_business():
+    data = {"refresh_token": StaticData.refresh_token}
     async with httpx.AsyncClient(base_url="https://sso.ufaas.io") as client:
         response = await client.post("/auth/refresh", json=data)
         return response.json()["access_token"]
+
+
+@pytest_asyncio.fixture(scope="session")
+async def access_token_user():
+    data = {"refresh_token": StaticData.refresh_token_user}
+    async with httpx.AsyncClient(base_url="https://sso.ufaas.io") as client:
+        response = await client.post("/auth/refresh", json=data)
+        return response.json()["access_token"]
+
+
+@pytest_asyncio.fixture(scope="session")
+async def auth_headers_business(access_token_business):
+    return {"Authorization": f"Bearer {access_token_business}"}
 
 
 @pytest.fixture(scope="session", autouse=True)

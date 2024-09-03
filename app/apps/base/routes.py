@@ -135,7 +135,7 @@ class AbstractBaseRouter(Generic[T, TS], metaclass=singleton.Singleton):
         user = await self.get_user(request)
         # TODO self.create_request_schema is not a valid input for create_dto because many times it does not have user_id
         item_data: TS = await create_dto(self.create_response_schema)(
-            request, user.uid if user else None
+            request, user_id=user.uid if user else None
         )
         item = await self.model.create_item(item_data.model_dump())
         return self.create_response_schema(**item.__dict__)

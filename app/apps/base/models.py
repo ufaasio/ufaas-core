@@ -7,8 +7,6 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import Mapped, as_declarative, declared_attr, mapped_column
 from sqlalchemy.sql import func
 
-from server.db import async_session
-
 # Base = declarative_base()
 
 
@@ -65,6 +63,8 @@ class BaseEntity:
         *args,
         **kwargs,
     ):
+        from server.db import async_session
+
         base_query = [cls.is_deleted == is_deleted, cls.uid == uid]
 
         if hasattr(cls, "user_id"):
@@ -89,6 +89,8 @@ class BaseEntity:
         *args,
         **kwargs,
     ):
+        from server.db import async_session
+
         base_query = [cls.is_deleted == is_deleted]
 
         if hasattr(cls, "user_id"):
@@ -116,6 +118,8 @@ class BaseEntity:
         business_name: str = None,
         is_deleted: bool = False,
     ):
+        from server.db import async_session
+
         # Create the base query
         base_query = [cls.is_deleted == is_deleted]
 
@@ -188,6 +192,8 @@ class BaseEntity:
 
     @classmethod
     async def create_item(cls, data: dict):
+        from server.db import async_session
+
         item = cls(**data)
         async with async_session() as session:
             session.add(item)
@@ -197,6 +203,8 @@ class BaseEntity:
 
     @classmethod
     async def update_item(cls, item: "BaseEntity", data: dict):
+        from server.db import async_session
+
         for key, value in data.items():
             if cls.update_field_set() and key not in cls.update_field_set():
                 continue
@@ -213,6 +221,8 @@ class BaseEntity:
 
     @classmethod
     async def delete_item(cls, item: "BaseEntity"):
+        from server.db import async_session
+
         item.is_deleted = True
         async with async_session() as session:
             session.add(item)

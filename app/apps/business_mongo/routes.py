@@ -13,7 +13,6 @@ from apps.business.schemas import (
     BusinessDataUpdateSchema,
     BusinessSchema,
 )
-from core.exceptions import BaseHTTPException
 from server.config import Settings
 
 from .middlewares import get_business
@@ -57,15 +56,7 @@ class AbstractBusinessBaseRouter(AbstractBaseRouter[T, TS]):
     ):
         user = await self.get_user(request)
         user_id = user.uid if user else None
-        item = await self.model.get_item(
-            uid, business_name=business.name, user_id=user_id
-        )
-        if item is None:
-            raise BaseHTTPException(
-                status_code=404,
-                error="item_not_found",
-                message=f"{self.model.__name__.capitalize()} not found",
-            )
+        item = await self.get_item(uid, user_id=user_id, business_name=business.name)
         return item
 
     async def create_item(
@@ -75,7 +66,7 @@ class AbstractBusinessBaseRouter(AbstractBaseRouter[T, TS]):
     ):
         user = await self.get_user(request)
         item_data: TS = await create_dto(self.create_response_schema)(
-            request, user.uid if user else None, business_name=business.name
+            request, user_id=user.uid if user else None, business_name=business.name
         )
         item = await self.model.create_item(item_data.model_dump())
 
@@ -91,16 +82,7 @@ class AbstractBusinessBaseRouter(AbstractBaseRouter[T, TS]):
     ):
         user = await self.get_user(request)
         user_id = user.uid if user else None
-        item = await self.model.get_item(
-            uid, business_name=business.name, user_id=user_id
-        )
-
-        if item is None:
-            raise BaseHTTPException(
-                status_code=404,
-                error="item_not_found",
-                message=f"{self.model.__name__.capitalize()} not found",
-            )
+        item = await self.get_item(uid, user_id=user_id, business_name=business.name)
         # item = await update_dto(self.model)(request, user)
         item = await self.model.update_item(item, data)
         return item
@@ -113,16 +95,7 @@ class AbstractBusinessBaseRouter(AbstractBaseRouter[T, TS]):
     ):
         user = await self.get_user(request)
         user_id = user.uid if user else None
-        item = await self.model.get_item(
-            uid, business_name=business.name, user_id=user_id
-        )
-        if item is None:
-            raise BaseHTTPException(
-                status_code=404,
-                error="item_not_found",
-                message=f"{self.model.__name__.capitalize()} not found",
-            )
-
+        item = await self.get_item(uid, user_id=user_id, business_name=business.name)
         item = await self.model.delete_item(item)
         return item
 

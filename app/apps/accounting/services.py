@@ -23,7 +23,7 @@ async def participant_validator(
 
 
 async def fail_proposal(proposal: Proposal, message: str = None):
-    logging.error(f"Error processing proposal {proposal.id} - {message}")
+    logging.warning(f"Error processing proposal {proposal.uid} - {message}")
     proposal.task_status = "error"
     await proposal.save_report(message, emit=False)
     await proposal.save_and_emit()
@@ -40,12 +40,6 @@ async def success_proposal(
         meta_data = proposal.meta_data or {}
 
         for participant in participants_wallets:
-            if not await participant_validator(participant, business):
-                return await fail_proposal(
-                    proposal,
-                    f"Participant {participant.wallet.id} is not valid",
-                )
-
             transaction = Transaction(
                 business_name=proposal.business_name,
                 user_id=participant.wallet.user_id,
@@ -64,11 +58,6 @@ async def success_proposal(
         await proposal.save()
 
 
-async def notify_proposal(proposal: Proposal, message: str):
-    logging.info(f"Proposal {proposal.id} - {message}")
-    return
-
-
 # New Functions for Separation of Concerns
 async def get_participant_wallets(
     participants: list[Participant], business_name: str, currency: str = "IRR"
@@ -77,7 +66,7 @@ async def get_participant_wallets(
         wallet: Wallet = await Wallet.get_item(
             participant.wallet_id, business_name=business_name, user_id=None
         )
-        balance = await wallet.get_balance(currency)
+        balance = (await wallet.get_balance(currency)).get(currency, 0)
         print(f"Balance type: {type(balance)}, value: {balance}")
         return ParticipantWallet(
             wallet=wallet, amount=participant.amount, balance=balance
@@ -93,8 +82,6 @@ async def validate_proposal(proposal: Proposal):
         raise ValueError(f"Proposal {proposal.id} is already processed")
     if not proposal.participants:
         raise ValueError("Proposal participants are empty")
-    if not isinstance(proposal.participants, list):
-        raise ValueError("Proposal participants are not a list")
 
 
 async def validate_wallets(
@@ -118,18 +105,32 @@ async def validate_amounts(
         [participant.amount for participant in participants if participant.amount > 0]
     )
     total_amount = sum([participant.amount for participant in participants])
+    logging.info(
+        f"Received amount: {received_amount}, Total amount: {total_amount}, Proposal amount: {proposal.amount}"
+    )
     if received_amount != proposal.amount:
         raise ValueError(
-            f"Total amount {total_amount} is not equal to proposal amount {proposal.amount}"
+            f"Transferred amount {received_amount} is not equal to proposal amount {proposal.amount}"
         )
     if total_amount != 0:
         raise ValueError(f"The sent and received amounts are not equal")
 
 
+async def validate_participants(
+    proposal: Proposal, participants: list[ParticipantWallet], business: Business
+):
+    for participant in participants:
+        if not await participant_validator(participant, business):
+            return await fail_proposal(
+                proposal,
+                f"Participant {participant.wallet.id} is not valid",
+            )
+
+
 async def check_balances(sources: list[ParticipantWallet], currency: str):
     for source in sources:
         held_amount = await source.wallet.get_held_amount(currency)
-        if source.balance - held_amount < source.amount:
+        if source.balance - held_amount < -source.amount:
             raise ValueError(
                 f"Insufficient balance in source wallet {source.wallet.id}"
             )
@@ -164,10 +165,10 @@ async def process_proposal(proposal: Proposal):
             await validate_wallets(proposal, participants_wallets)
             await validate_amounts(proposal, participants_wallets)
             await check_balances(sources, proposal.currency)
+            await validate_participants(proposal, participants_wallets, business)
 
             await success_proposal(business, proposal, participants_wallets, session)
 
         except Exception as e:
             await session.rollback()
-            logging.error(f"Error processing proposal {proposal.uid} - {e}")
             await fail_proposal(proposal, str(e))

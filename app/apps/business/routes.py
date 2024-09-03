@@ -67,7 +67,7 @@ class AbstractBusinessBaseRouter(AbstractBaseRouter[T, TS]):
     ):
         user = await self.get_user(request)
         item_data: TS = await create_dto(self.create_response_schema)(
-            request, user.uid if user else None, business_name=business.name
+            request, user_id=user.uid if user else None, business_name=business.name
         )
         item = await self.model.create_item(item_data.model_dump())
 

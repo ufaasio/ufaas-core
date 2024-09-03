@@ -31,7 +31,12 @@ class JWTSecret(BaseModel):
     @classmethod
     @lru_cache
     def get_jwk_keys(cls, jwk_url):
-        return jwt.PyJWKClient(jwk_url)
+        return jwt.PyJWKClient(
+            jwk_url,
+            headers={
+                "User-Agent": "usso-python",
+            },
+        )
 
     @lru_cache(maxsize=128)
     def decode(self, token: str):

@@ -10,10 +10,10 @@ from core.exceptions import BaseHTTPException
 
 
 class AuthorizationData(BaseModel):
-    user: UserData | None
-    user_id: uuid.UUID | None
-    business: Business | None
-    business_or_user: Literal["Business", "User"] | None
+    user: UserData | None = None
+    user_id: uuid.UUID | None = None
+    business: Business | None = None
+    business_or_user: Literal["Business", "User"] | None = None
     authorized: bool = False
     app_id: str | None = None
 
@@ -49,6 +49,13 @@ async def business_or_user(
     return "User", user
 
 
+async def get_request_body_dict(request: Request):
+    body_bytes = await request.body()
+    if not body_bytes:
+        return {}
+    return await request.json()
+
+
 async def authorization_middleware(request: Request) -> AuthorizationData:
     authorization = AuthorizationData()
 
@@ -62,7 +69,7 @@ async def authorization_middleware(request: Request) -> AuthorizationData:
         authorization.user_id = (
             request.query_params.get("user_id")
             or request.path_params.get("user_id")
-            or (await request.json()).get("user_id")
+            or (await get_request_body_dict(request)).get("user_id")
         )
     else:
         authorization.business_or_user = "User"

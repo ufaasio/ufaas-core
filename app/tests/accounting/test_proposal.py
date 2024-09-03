@@ -10,8 +10,23 @@ from apps.accounting.services import (
     get_participant_wallets,
     process_proposal,
 )
+from apps.business_mongo.models import Business
 
-from .constants import StaticData
+from ..constants import StaticData
+
+
+@pytest_asyncio.fixture(scope="module", autouse=True)
+async def setup_business():
+    business = Business(
+        business_id=StaticData.business_id_1,
+        business_name=StaticData.business_name_1,
+        domain=StaticData.business_domain_1,
+        name=StaticData.business_name_1,
+        user_id=StaticData.user_id_1_1,
+    )
+    await business.save()
+    yield business
+    await business.delete()
 
 
 @pytest.fixture(scope="module")
@@ -22,7 +37,10 @@ def setup_wallet():
 
         return {currency: 500 if currency == "USD" else 0}
 
+    original_get_balance = Wallet.get_balance
     Wallet.get_balance = mock_get_balance
+    yield
+    Wallet.get_balance = original_get_balance
 
 
 @pytest_asyncio.fixture(scope="module")

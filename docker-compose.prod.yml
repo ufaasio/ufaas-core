@@ -12,6 +12,30 @@ services:
     networks:
       - data
 
+  nocodb: 
+    image: "nocodb/nocodb:latest"
+    restart: unless-stopped
+    # depends_on: 
+    #   db: 
+    #     condition: service_healthy
+    environment: 
+      NC_DB: "pg://db?u=${POSTGRES_USER}&p=${POSTGRES_PASSWORD}&d=${POSTGRES_DB}"
+    volumes: 
+      - "./nc.data:/usr/app/data"
+    networks:
+      - data
+      - traefik-net
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.nocodb.entrypoints=web"
+      - "traefik.http.routers.nocodb.rule=Host(`nocodb${DOMAIN}`)"
+      - "traefik.http.routers.nocodb-secure.entrypoints=websecure"
+      - "traefik.http.routers.nocodb-secure.rule=Host(`nocodb${DOMAIN}`)"
+      - "traefik.http.routers.nocodb-secure.tls=true"
+      - "traefik.http.routers.nocodb-secure.tls.certresolver=letsencrypt"
+      - "traefik.http.services.nocodb.loadbalancer.server.port=8080"
+      - "traefik.docker.network=traefik-net"
+
   app:
     build: app
     restart: unless-stopped
@@ -22,8 +46,8 @@ services:
       - DATABASE_URL=postgresql+asyncpg://${POSTGRES_USER}:${POSTGRES_PASSWORD}@db/${POSTGRES_DB}
       - DATABASE_URL_SYNC=postgresql+psycopg2://${POSTGRES_USER}:${POSTGRES_PASSWORD}@db/${POSTGRES_DB}
       # - DATABASE_URL=sqlite+aiosqlite:///./logs/app.db
-    # volumes:
-    #   - ./app:/app
+    volumes:
+      - ./app/logs:/app/logs
     # ports:
     #   - 3010:3000
     networks:
@@ -55,5 +79,6 @@ networks:
   traefik-net:
     external: true
   data:
+    name: ufaas-net
   # mongo-net:
   #   external: true

@@ -115,17 +115,22 @@ class AbstractBaseRouter(Generic[T, TS], metaclass=singleton.Singleton):
             return None
         return await self.user_dependency(request)
 
+    async def get_user_id(self, request: Request, *args, **kwargs):
+        user = await self.get_user(request)
+        user_id = user.uid if user else None
+        return user_id
+
     async def list_items(
         self,
         request: Request,
         offset: int = Query(0, ge=0),
         limit: int = Query(10, ge=1, le=Settings.page_max_limit),
     ):
-        user = await self.get_user(request)
+        user_id = await self.get_user_id(request)
         limit = max(1, min(limit, Settings.page_max_limit))
 
         items, total = await self.model.list_total_combined(
-            user_id=user.uid if user else None, offset=offset, limit=limit
+            user_id=user_id, offset=offset, limit=limit
         )
         items_in_schema = [self.list_item_schema(**item.model_dump()) for item in items]
 
@@ -141,8 +146,7 @@ class AbstractBaseRouter(Generic[T, TS], metaclass=singleton.Singleton):
         request: Request,
         uid: uuid.UUID,
     ):
-        user = await self.get_user(request)
-        user_id = user.uid if user else None
+        user_id = await self.get_user_id(request)
         item = await self.get_item(uid, user_id=user_id)
         return item
 
@@ -151,9 +155,9 @@ class AbstractBaseRouter(Generic[T, TS], metaclass=singleton.Singleton):
         request: Request,
         data: dict,
     ):
-        user = await self.get_user(request)
+        user_id = await self.get_user_id(request)
         item_data: TS = await create_dto(self.create_response_schema)(
-            request, user_id=user.uid if user else None
+            request, user_id=user_id
         )
         item = await self.model.create_item(item_data.model_dump())
         # item: T = await create_dto(self.create_request_schema)(request, user)
@@ -166,8 +170,7 @@ class AbstractBaseRouter(Generic[T, TS], metaclass=singleton.Singleton):
         uid: uuid.UUID,
         data: dict,
     ):
-        user = await self.get_user(request)
-        user_id = user.uid if user else None
+        user_id = await self.get_user_id(request)
         item = await self.get_item(uid, user_id=user_id)
         # item = await update_dto(self.model)(request, user)
         item = await self.model.update_item(item, data)
@@ -178,8 +181,7 @@ class AbstractBaseRouter(Generic[T, TS], metaclass=singleton.Singleton):
         request: Request,
         uid: uuid.UUID,
     ):
-        user = await self.get_user(request)
-        user_id = user.uid if user else None
+        user_id = await self.get_user_id(request)
         item = await self.get_item(uid, user_id=user_id)
 
         item = await self.model.delete_item(item)
@@ -201,8 +203,7 @@ class AbstractTaskRouter(AbstractBaseRouter[TE, TS]):
     async def start_item(
         self, request: Request, uid: uuid.UUID, background_tasks: BackgroundTasks
     ):
-        user = await self.get_user(request)
-        user_id = user.uid if user else None
+        user_id = await self.get_user_id(request)
         item: TE = await self.get_item(uid, user_id=user_id)
         background_tasks.add_task(item.start_processing)
         return item.model_dump()

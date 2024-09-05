@@ -12,6 +12,7 @@ from sqlalchemy.orm import Mapped, mapped_column
 from apps.base.models import ImmutableBusinessOwnedEntity
 from apps.base_mongo.models import BusinessOwnedEntity
 from apps.base_mongo.tasks import TaskMixin
+from utils.numtools import decimal_amount
 
 from .schemas import Participant
 
@@ -126,11 +127,7 @@ class WalletHold(BusinessOwnedEntity):
 
     @field_validator("amount", mode="before")
     def validate_amount(cls, value):
-        from bson.decimal128 import Decimal128
-
-        if type(value) == Decimal128:
-            return Decimal(value.to_decimal())
-        return value
+        return decimal_amount(value)
 
     @classmethod
     def get_holds_query(
@@ -297,12 +294,42 @@ class Transaction(ImmutableBusinessOwnedEntity):
     balance: Mapped[Decimal]
     description: Mapped[str | None]
 
-    async def note(self) -> str:
-        query = TransactionNote.find(TransactionNote.transaction_id == self.uid).sort(
-            "-created_at"
-        )
-        note = await query.to_list()
-        return note[0].note if note else None
+    async def get_note(self) -> str:
+        try:
+            note = (
+                await TransactionNote.find(TransactionNote.transaction_id == self.uid)
+                .sort("-created_at")
+                .first_or_none()
+            )
+
+            if note:
+                return note.note
+            return None
+        except Exception as e:
+            # Handle or log the exception
+            print(f"An error occurred: {e}")
+            return None
+
+    @classmethod
+    def get_query(
+        cls,
+        user_id: uuid.UUID = None,
+        business_name: str = None,
+        wallet_id: uuid.UUID = None,
+        is_deleted: bool = False,
+        *args,
+        **kwargs,
+    ):
+        base_query = [cls.is_deleted == is_deleted]
+
+        if hasattr(cls, "user_id"):
+            base_query.append(cls.user_id == user_id)
+        if hasattr(cls, "business_name"):
+            base_query.append(cls.business_name == business_name)
+        if wallet_id:
+            base_query.append(cls.wallet_id == wallet_id)
+
+        return base_query
 
 
 class TransactionNote(BusinessOwnedEntity):
@@ -323,11 +350,7 @@ class Proposal(BusinessOwnedEntity, TaskMixin):
 
     @field_validator("amount", mode="before")
     def validate_amount(cls, value):
-        from bson.decimal128 import Decimal128
-
-        if type(value) == Decimal128:
-            return Decimal(value.to_decimal())
-        return value
+        return decimal_amount(value)
 
     async def get_transactions(self):
         from server.db import async_session

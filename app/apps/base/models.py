@@ -53,23 +53,40 @@ class BaseEntity:
         return []
 
     @classmethod
+    def get_query(
+        cls,
+        user_id: uuid.UUID = None,
+        business_name: str = None,
+        is_deleted: bool = False,
+        **kwargs,
+    ):
+        base_query = [cls.is_deleted == is_deleted]
+
+        if hasattr(cls, "user_id"):
+            base_query.append(cls.user_id == user_id)
+        if hasattr(cls, "business_name"):
+            base_query.append(cls.business_name == business_name)
+
+        return base_query
+
+    @classmethod
     async def get_item(
         cls,
         uid: uuid.UUID,
         user_id: uuid.UUID = None,
         business_name: str = None,
         is_deleted: bool = False,
-        *args,
         **kwargs,
     ):
         from server.db import async_session
 
-        base_query = [cls.is_deleted == is_deleted, cls.uid == uid]
-
-        if hasattr(cls, "user_id"):
-            base_query.append(cls.user_id == user_id)
-        if hasattr(cls, "business_name"):
-            base_query.append(cls.business_name == business_name)
+        base_query = cls.get_query(
+            user_id=user_id,
+            business_name=business_name,
+            is_deleted=is_deleted,
+            **kwargs,
+        )
+        base_query.append(cls.uid == uid)
 
         async with async_session() as session:
             query = select(cls).filter(*base_query)
@@ -82,20 +99,19 @@ class BaseEntity:
         cls,
         user_id: uuid.UUID = None,
         business_name: str = None,
+        is_deleted: bool = False,
         offset: int = 0,
         limit: int = 10,
-        is_deleted: bool = False,
-        *args,
         **kwargs,
     ):
         from server.db import async_session
 
-        base_query = [cls.is_deleted == is_deleted]
-
-        if hasattr(cls, "user_id"):
-            base_query.append(cls.user_id == user_id)
-        if hasattr(cls, "business_name"):
-            base_query.append(cls.business_name == business_name)
+        base_query = cls.get_query(
+            user_id=user_id,
+            business_name=business_name,
+            is_deleted=is_deleted,
+            **kwargs,
+        )
 
         items_query = (
             select(cls)
@@ -116,17 +132,16 @@ class BaseEntity:
         user_id: uuid.UUID = None,
         business_name: str = None,
         is_deleted: bool = False,
+        **kwargs,
     ):
         from server.db import async_session
 
-        # Create the base query
-        base_query = [cls.is_deleted == is_deleted]
-
-        # Apply user_id filtering if the model has a user_id attribute
-        if hasattr(cls, "user_id"):
-            base_query.append(cls.user_id == user_id)
-        if hasattr(cls, "business_name"):
-            base_query.append(cls.business_name == business_name)
+        base_query = cls.get_query(
+            user_id=user_id,
+            business_name=business_name,
+            is_deleted=is_deleted,
+            **kwargs,
+        )
 
         # Query for getting the total count of items
         total_count_query = select(func.count()).filter(*base_query)  # .subquery()
@@ -145,6 +160,7 @@ class BaseEntity:
         offset: int = 0,
         limit: int = 10,
         is_deleted: bool = False,
+        **kwargs,
     ) -> tuple[list["BaseEntity"], int]:
         items = await cls.list_items(
             user_id=user_id,
@@ -152,9 +168,13 @@ class BaseEntity:
             offset=offset,
             limit=limit,
             is_deleted=is_deleted,
+            **kwargs,
         )
         total = await cls.total_count(
-            user_id=user_id, business_name=business_name, is_deleted=is_deleted
+            user_id=user_id,
+            business_name=business_name,
+            is_deleted=is_deleted,
+            **kwargs,
         )
         return items, total
 

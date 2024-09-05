@@ -1,4 +1,5 @@
 import logging
+import uuid
 
 import httpx
 import pytest
@@ -46,6 +47,25 @@ async def test_holds_create_user(
         headers=auth_headers,
         json=data,
     )
+    assert response.status_code == 401
+
+
+@pytest.mark.asyncio
+async def test_invalid_proposal_api_update_user(
+    access_token_user: str,
+    client: httpx.AsyncClient,
+):
+    auth_headers = {
+        "Authorization": f"Bearer {access_token_user}",
+        "Content-Type": "application/json",
+    }
+    response = await client.patch(
+        f"/api/v1/holds/{uuid.uuid4()}",
+        headers=auth_headers,
+        json={"meta_data": {"key": "value"}},
+    )
+    resp_json = response.json()
+    logging.info(f"{resp_json}")
     assert response.status_code == 401
 
 

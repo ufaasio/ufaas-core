@@ -7,13 +7,46 @@ import httpx
 import pytest
 import pytest_asyncio
 from beanie import init_beanie
+from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
+from sqlalchemy.orm import sessionmaker
 
 from apps.base_mongo import models as base_mongo_models
 from server.config import Settings
+from server.db import async_session
 from server.server import app as fastapi_app
 from utils.basic import get_all_subclasses
 
 from .constants import StaticData
+
+DATABASE_URL = "sqlite+aiosqlite:///:memory:"
+
+# Create the engine and session factory for the test database
+test_engine = create_async_engine(DATABASE_URL, echo=True)
+TestSessionLocal = sessionmaker(
+    bind=test_engine, class_=AsyncSession, expire_on_commit=False
+)
+
+from server.db import Base
+
+
+async def override_get_db() -> AsyncGenerator[AsyncSession, None]:
+    async with TestSessionLocal() as session:
+        yield session
+
+
+@pytest_asyncio.fixture(scope="function", autouse=True)
+async def setup_test_db():
+    """Fixture to create and drop tables before and after each test function."""
+    async with test_engine.begin() as conn:
+        # Create all tables in the test database
+        await conn.run_sync(Base.metadata.create_all)
+    yield
+    async with test_engine.begin() as conn:
+        # Drop all tables in the test database after the test
+        await conn.run_sync(Base.metadata.drop_all)
+
+
+fastapi_app.dependency_overrides[async_session] = override_get_db
 
 # @pytest.fixture(scope="session", autouse=True)
 # def event_loop():
@@ -60,6 +93,7 @@ async def db(mongo_client):
 @pytest_asyncio.fixture(scope="session")
 async def client() -> AsyncGenerator[httpx.AsyncClient, None]:
     """Fixture to provide an AsyncClient for FastAPI app."""
+
     async with httpx.AsyncClient(
         app=fastapi_app, base_url="http://test.ufaas.io"
     ) as ac:

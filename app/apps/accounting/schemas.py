@@ -6,6 +6,7 @@ from typing import Any, Literal
 from pydantic import BaseModel, field_validator
 
 from apps.base.schemas import BusinessOwnedEntitySchema
+from utils.numtools import decimal_amount
 
 
 class WalletSchema(BusinessOwnedEntitySchema):
@@ -35,11 +36,7 @@ class WalletHoldSchema(BusinessOwnedEntitySchema):
 
     @field_validator("amount", mode="before")
     def validate_amount(cls, value):
-        from bson.decimal128 import Decimal128
-
-        if type(value) == Decimal128:
-            return Decimal(value.to_decimal())
-        return value
+        return decimal_amount(value)
 
 
 class WalletHoldCreateSchema(BaseModel):
@@ -67,17 +64,17 @@ class TransactionSchema(BusinessOwnedEntitySchema):
     note: str | None
 
 
+class TransactionNoteUpdateSchema(BaseModel):
+    note: str
+
+
 class Participant(BaseModel):
     wallet_id: uuid.UUID
     amount: Decimal
 
     @field_validator("amount", mode="before")
     def validate_amount(cls, value):
-        from bson.decimal128 import Decimal128
-
-        if type(value) == Decimal128:
-            return Decimal(value.to_decimal())
-        return value
+        return decimal_amount(value)
 
 
 class ProposalSchema(BusinessOwnedEntitySchema):
@@ -92,11 +89,7 @@ class ProposalSchema(BusinessOwnedEntitySchema):
 
     @field_validator("amount", mode="before")
     def validate_amount(cls, value):
-        from bson.decimal128 import Decimal128
-
-        if type(value) == Decimal128:
-            return Decimal(value.to_decimal())
-        return value
+        return decimal_amount(value)
 
 
 class ProposalCreateSchema(BaseModel):

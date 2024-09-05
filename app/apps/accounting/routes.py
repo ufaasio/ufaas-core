@@ -1,6 +1,7 @@
 import asyncio
 import uuid
 
+import fastapi
 from fastapi import Query, Request
 
 from apps.base.schemas import PaginatedResponse
@@ -10,11 +11,12 @@ from core.exceptions import BaseHTTPException
 from server.config import Settings
 
 from .abstract_routers import AbstractAuthRouter, AbstractAuthSQLRouter
-from .models import Proposal, Transaction, Wallet, WalletHold
+from .models import Proposal, Transaction, TransactionNote, Wallet, WalletHold
 from .schemas import (
     ProposalCreateSchema,
     ProposalSchema,
     ProposalUpdateSchema,
+    TransactionNoteUpdateSchema,
     TransactionSchema,
     WalletCreateSchema,
     WalletDetailSchema,
@@ -252,13 +254,21 @@ class TransactionRouter(AbstractAuthSQLRouter[Transaction, TransactionSchema]):
             response_model=self.retrieve_response_schema,
             status_code=200,
         )
+        self.router.add_api_route(
+            "/{uid:uuid}",
+            self.update_item,
+            methods=["PATCH"],
+            response_model=self.update_response_schema,
+            status_code=200,
+        )
 
     async def get_in_schema(self, item: Transaction):
-        return self.schema(**item.__dict__, note=await item.note())
+        return self.schema(**item.__dict__, note=await item.get_note())
 
     async def list_items(
         self,
         request: Request,
+        wallet_id: uuid.UUID | None = None,
         offset: int = Query(0, ge=0),
         limit: int = Query(10, ge=0, le=Settings.page_max_limit),
     ):
@@ -266,6 +276,7 @@ class TransactionRouter(AbstractAuthSQLRouter[Transaction, TransactionSchema]):
         items, total = await self.model.list_total_combined(
             user_id=auth.user_id,
             business_name=auth.business.name,
+            wallet_id=wallet_id,
             offset=offset,
             limit=limit,
         )
@@ -277,12 +288,53 @@ class TransactionRouter(AbstractAuthSQLRouter[Transaction, TransactionSchema]):
             items=items_in_schema, offset=offset, limit=limit, total=total
         )
 
-    async def retrieve_item(self, request: Request, uid: uuid.UUID):
+    async def retrieve_item(
+        self, request: Request, uid: uuid.UUID, wallet_id: uuid.UUID | None = None
+    ):
         auth = await self.get_auth(request)
         item = await self.get_item(
-            uid, user_id=auth.user_id, business_name=auth.business.name
+            uid=uid,
+            user_id=auth.user_id,
+            business_name=auth.business.name,
+            wallet_id=wallet_id,
         )
         return await self.get_in_schema(item)
+
+    async def update_item(
+        self,
+        request: Request,
+        uid: uuid.UUID,
+        data: TransactionNoteUpdateSchema,
+        wallet_id: uuid.UUID | None = None,
+    ):
+        auth = await self.get_auth(request)
+        item: Transaction = await self.get_item(
+            uid,
+            user_id=auth.user_id,
+            business_name=auth.business.name,
+            wallet_id=wallet_id,
+        )
+        await TransactionNote(
+            transaction_id=uid,
+            business_name=item.business_name,
+            user_id=auth.user_id,
+            **data.model_dump(),
+        ).save()
+        return await self.get_in_schema(item)
+
+
+class TransactionWRouter(TransactionRouter):
+    def __init__(self):
+        super(TransactionRouter, self).__init__(
+            model=Transaction,
+            schema=TransactionSchema,
+            user_dependency=None,
+            prefix="/wallets/{wallet_id:uuid}/transactions",
+            tags=["Accounting"],
+        )
+
+    def config_routes(self, **kwargs):
+        super().config_routes(**kwargs)
 
 
 class ProposalRouter(
@@ -350,9 +402,6 @@ class ProposalRouter(
     ):
         return await super().list_items(request, offset, limit)
 
-    async def retrieve_item(self, request: Request, uid: uuid.UUID):
-        return await super().retrieve_item(request, uid)
-
     async def create_item(self, request: Request, data: ProposalCreateSchema):
         if data.task_status and data.task_status not in ["draft", "init"]:
             raise BaseHTTPException(
@@ -392,7 +441,9 @@ class ProposalRouter(
                 400, error="invalid_status", message="Invalid task status"
             )
 
-        item: Proposal = await self.model.update_item(item, data.model_dump())
+        item: Proposal = await self.model.update_item(
+            item, data.model_dump(exclude_none=True)
+        )
 
         if item.task_status == "init":
             return await self.start_item(request, item.uid)
@@ -412,4 +463,13 @@ wallet_router = WalletRouter().router
 wallet_hold_router = WalletHoldRouter().router
 wallet_hold_router_business = WalletHoldHRouter().router
 transaction_router = TransactionRouter().router
+transaction_wallet_router = TransactionWRouter().router
 proposal_router = ProposalRouter().router
+
+router = fastapi.APIRouter()
+router.include_router(wallet_router)
+router.include_router(wallet_hold_router)
+router.include_router(wallet_hold_router_business)
+router.include_router(transaction_router)
+router.include_router(transaction_wallet_router)
+router.include_router(proposal_router)

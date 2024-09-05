@@ -113,13 +113,13 @@ app.include_router(application_router, prefix="/api/v1")
 
 
 # Mount the htmlcov directory to be served at /coverage
-app.mount(
-    "/coverage", StaticFiles(directory=config.Settings.coverage_dir), name="coverage"
-)
+# app.mount(
+#     "/coverage", StaticFiles(directory=config.Settings.coverage_dir), name="coverage"
+# )
 
 
 @app.get("/api/v1/health")
-async def index():
+async def health():
     return {"status": "ok"}
 
 

@@ -22,8 +22,9 @@ class JWTSecret(BaseModel):
     def __hash__(self):
         return hash(self.model_dump_json())
 
+    @classmethod
     @model_validator(mode="before")
-    def validate_secret(data: dict):
+    def validate_secret(cls, data: dict):
         if not data.get("jwk_url") and not data.get("secret"):
             raise ValueError("Either jwk_url or secret must be provided")
         return data

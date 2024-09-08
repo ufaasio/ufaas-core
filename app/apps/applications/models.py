@@ -1,13 +1,32 @@
 import uuid
 
+from apps.base_mongo.models import BaseEntity, BusinessEntity, OwnedEntity
+from pydantic import Field
 from pymongo import ASCENDING, IndexModel
+from .schemas import AppDomainSchema, AppSchema, PermissionSchema, AuthorizedDomainSchema
 
-from apps.base_mongo.models import BaseEntity, BusinessEntity
 
-
-class Application(BaseEntity):
+class Application(OwnedEntity):
     name: str
     domain: str
+    api_doc_url: str
+    is_active: bool = False
+
+    permissions: list[uuid.UUID] = []
+    description: str | None = None
+    logo: str | None = None
+    is_published: bool = False
+    
+    support_email: str | None = None
+    app_domain_info: AppDomainSchema = AppDomainSchema()
+    developer_contact_emails: list[str] = []
+    test_users: list[uuid.UUID | str] = []
+
+    authorized_domains: AuthorizedDomainSchema = AuthorizedDomainSchema()
+
+    @classmethod
+    def create_exclude_set(cls) -> list[str]:
+        return super().create_exclude_set() + ["is_active"]
 
     class Settings:
         indexes = [
@@ -15,17 +34,15 @@ class Application(BaseEntity):
             IndexModel([("domain", ASCENDING)], unique=True),
         ]
 
-    # permissions = relationship("Permission", back_populates="application")
 
-
-class Permission(BusinessEntity):
-    app_id: uuid.UUID
-    write_access: bool = False
+class BasePermission(BaseEntity):
+    scope: str = Field(
+        description="Permission scope",
+        json_schema_extra={"index": True, "unique": True},
+    )
+    description: str | None = None
 
     class Settings:
         indexes = [
-            IndexModel([("app_id", ASCENDING), ("user_id", ASCENDING)], unique=True),
+            IndexModel([("scope", ASCENDING)], unique=True),
         ]
-
-    # business = relationship("Business", back_populates="permissions")
-    # application = relationship("Application", back_populates="permissions")

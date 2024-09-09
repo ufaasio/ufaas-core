@@ -53,6 +53,12 @@ class WalletRouter(AbstractAuthRouter[Wallet, WalletSchema]):
     ):
         auth = await self.get_auth(request)
         paginated_response = await super().list_items(request, offset, limit)
+        if paginated_response.total == 1:
+            item: Wallet = paginated_response.items[0]
+            balance = await item.get_balance()
+            paginated_response.items = [
+                self.retrieve_response_schema(**item.model_dump(), balance=balance)
+            ]
 
         if auth.business_or_user == "Business" or paginated_response.total > 0:
             return paginated_response

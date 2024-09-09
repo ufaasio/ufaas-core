@@ -94,6 +94,7 @@ async def general_exception_handler(request: fastapi.Request, exc: Exception):
 
 origins = [
     "http://localhost:8000",
+    "http://localhost:3000",
 ]
 app.add_middleware(
     CORSMiddleware,

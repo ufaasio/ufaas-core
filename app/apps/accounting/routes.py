@@ -2,12 +2,11 @@ import asyncio
 import uuid
 
 import fastapi
-from fastapi import Query, Request
-
 from apps.base.schemas import PaginatedResponse
 from apps.base_mongo.routes import AbstractTaskRouter
 from apps.business_mongo.middlewares import AuthorizationData, AuthorizationException
 from core.exceptions import BaseHTTPException
+from fastapi import Query, Request
 from server.config import Settings
 
 from .abstract_routers import AbstractAuthRouter, AbstractAuthSQLRouter
@@ -23,16 +22,15 @@ from .schemas import (
     WalletHoldCreateSchema,
     WalletHoldSchema,
     WalletHoldUpdateSchema,
-    WalletSchema,
     WalletUpdateSchema,
 )
 
 
-class WalletRouter(AbstractAuthRouter[Wallet, WalletSchema]):
+class WalletRouter(AbstractAuthRouter[Wallet, WalletDetailSchema]):
     def __init__(self):
         super().__init__(
             model=Wallet,
-            schema=WalletSchema,
+            schema=WalletDetailSchema,
             user_dependency=None,
             # prefix="/wallets",
             tags=["Accounting"],
@@ -52,13 +50,21 @@ class WalletRouter(AbstractAuthRouter[Wallet, WalletSchema]):
         limit: int = Query(10, ge=0, le=Settings.page_max_limit),
     ):
         auth = await self.get_auth(request)
-        paginated_response = await super().list_items(request, offset, limit)
-        if paginated_response.total == 1:
-            item: Wallet = paginated_response.items[0]
-            balance = await item.get_balance()
-            paginated_response.items = [
-                self.retrieve_response_schema(**item.model_dump(), balance=balance)
-            ]
+
+        items, total = await self.model.list_total_combined(
+            user_id=auth.user_id,
+            business_name=auth.business.name,
+            offset=offset,
+            limit=limit,
+        )
+        balances = await asyncio.gather(*[item.get_balance() for item in items])
+        items_in_schema = [
+            self.list_item_schema(**item.model_dump(), balance=balance)
+            for item, balance in zip(items, balances)
+        ]
+        paginated_response = PaginatedResponse(
+            items=items_in_schema, offset=offset, limit=limit, total=total
+        )
 
         if auth.business_or_user == "Business" or paginated_response.total > 0:
             return paginated_response
@@ -83,7 +89,9 @@ class WalletRouter(AbstractAuthRouter[Wallet, WalletSchema]):
         auth = await self.get_auth(request)
         if auth.business_or_user == "User":
             raise AuthorizationException("User cannot create wallet")
-        return await super().create_item(request, data.model_dump())
+        item: Wallet = await super().create_item(request, data.model_dump())
+        balance = await item.get_balance()
+        return self.create_response_schema(**item.model_dump(), balance=balance)
 
     async def update_item(
         self, request: Request, uid: uuid.UUID, data: WalletUpdateSchema
@@ -91,15 +99,32 @@ class WalletRouter(AbstractAuthRouter[Wallet, WalletSchema]):
         auth = await self.get_auth(request)
         if auth.business_or_user == "User":
             raise AuthorizationException("User cannot update wallet")
-        return await super().update_item(
+        item: Wallet = await super().update_item(
             request, uid, data.model_dump(exclude_none=True)
         )
+        balance = await item.get_balance()
+        return self.update_response_schema(**item.model_dump(), balance=balance)
 
     async def delete_item(self, request: Request, uid: uuid.UUID):
         auth = await self.get_auth(request)
         if auth.business_or_user == "User":
             raise AuthorizationException("User cannot create wallet")
-        return await super().delete_item(request, uid)
+
+        # item = await super().delete_item(request, uid)
+        item: Wallet = await self.get_item(
+            uid, user_id=auth.user_id, business_name=auth.business.name
+        )
+        balance = await item.get_balance()
+        for key, value in balance.items():
+            if value != 0:
+                raise BaseHTTPException(
+                    400,
+                    error="not_empty",
+                    message=f"Wallet is not empty {key}: {value}",
+                )
+
+        item = await self.model.delete_item(item)
+        return self.delete_response_schema(**item.model_dump(), balance=balance)
 
 
 class WalletHoldRouter(AbstractAuthRouter[WalletHold, WalletHoldSchema]):

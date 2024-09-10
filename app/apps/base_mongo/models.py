@@ -1,16 +1,15 @@
 import uuid
 from datetime import datetime
 
-from beanie import Document, Insert, Replace, Save, SaveChanges, Update, before_event
-from pydantic import ConfigDict
-from pymongo import ASCENDING, IndexModel
-
 from apps.base.schemas import (
     BaseEntitySchema,
     BusinessEntitySchema,
     BusinessOwnedEntitySchema,
     OwnedEntitySchema,
 )
+from beanie import Document, Insert, Replace, Save, SaveChanges, Update, before_event
+from pydantic import ConfigDict
+from pymongo import ASCENDING, IndexModel
 from server.config import Settings
 
 from .tasks import TaskMixin
@@ -18,6 +17,7 @@ from .tasks import TaskMixin
 
 class BaseEntity(BaseEntitySchema, Document):
     class Settings:
+
         keep_nulls = False
         validate_on_save = True
 
@@ -179,6 +179,7 @@ class BaseEntity(BaseEntitySchema, Document):
 
 
 class OwnedEntity(OwnedEntitySchema, BaseEntity):
+
     @classmethod
     async def get_item(cls, uid, user_id, *args, **kwargs) -> "OwnedEntity":
         if user_id == None:
@@ -187,6 +188,7 @@ class OwnedEntity(OwnedEntitySchema, BaseEntity):
 
 
 class BusinessEntity(BusinessEntitySchema, BaseEntity):
+
     @classmethod
     async def get_item(cls, uid, business_name, *args, **kwargs) -> "BusinessEntity":
         if business_name == None:
@@ -200,6 +202,7 @@ class BusinessEntity(BusinessEntitySchema, BaseEntity):
 
 
 class BusinessOwnedEntity(BusinessOwnedEntitySchema, BaseEntity):
+
     @classmethod
     async def get_item(
         cls, uid, business_name, user_id, *args, **kwargs
@@ -234,8 +237,10 @@ class ImmutableOwnedEntity(ImmutableBase, OwnedEntity):
 
 
 class ImmutableBusinessEntity(ImmutableBase, BusinessEntity):
+
     pass
 
 
 class ImmutableBusinessOwnedEntity(ImmutableBase, BusinessOwnedEntity):
+
     pass

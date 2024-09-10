@@ -6,14 +6,13 @@ import debugpy
 import httpx
 import pytest
 import pytest_asyncio
-from beanie import init_beanie
-from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
-from sqlalchemy.orm import sessionmaker
-
 from apps.base_mongo import models as base_mongo_models
+from beanie import init_beanie
 from server.config import Settings
 from server.db import async_session
 from server.server import app as fastapi_app
+from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
+from sqlalchemy.orm import sessionmaker
 from utils.basic import get_all_subclasses
 
 from .constants import StaticData

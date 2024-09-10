@@ -1,14 +1,13 @@
 import uuid
 from typing import Any, Type, TypeVar
 
-from fastapi import Query, Request
-
 from apps.base.models import BusinessEntity as BusinessEntitySQL
 from apps.base.schemas import BusinessEntitySchema, PaginatedResponse
 from apps.base_mongo.models import BusinessEntity
 from apps.business.routes import AbstractBusinessBaseRouter as AbstractBusinessSQLRouter
 from apps.business_mongo.middlewares import AuthorizationData, authorization_middleware
 from apps.business_mongo.routes import AbstractBusinessBaseRouter
+from fastapi import Query, Request
 from server.config import Settings
 
 T = TypeVar("T", bound=BusinessEntity)
@@ -53,7 +52,7 @@ class AbstractAuthRouter(AbstractBusinessBaseRouter[T, TS]):
             **data,
         )
         await item.save()
-        return self.create_response_schema(**item.model_dump())
+        return item
 
     async def update_item(self, request: Request, uid: uuid.UUID, data: dict):
         auth = await self.get_auth(request)

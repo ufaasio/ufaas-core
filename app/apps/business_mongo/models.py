@@ -1,8 +1,7 @@
-from pydantic import model_validator
-from pymongo import ASCENDING, IndexModel
-
 from apps.base_mongo.models import OwnedEntity
 from apps.business.schemas import Config
+from pydantic import model_validator
+from pymongo import ASCENDING, IndexModel
 from server.config import Settings
 
 
@@ -32,7 +31,6 @@ class Business(OwnedEntity):
     async def get_by_name(cls, name: str):
         return await cls.find_one(cls.name == name)
 
-    @classmethod
     @model_validator(mode="before")
     def validate_domain(cls, data: dict):
         if not data.get("domain"):

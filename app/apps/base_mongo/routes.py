@@ -2,11 +2,10 @@ import uuid
 from typing import Any, Generic, Type, TypeVar
 
 import singleton
-from fastapi import APIRouter, BackgroundTasks, Query, Request
-
 from apps.base.handlers import create_dto
 from apps.base.schemas import BaseEntitySchema, PaginatedResponse
 from core.exceptions import BaseHTTPException
+from fastapi import APIRouter, BackgroundTasks, Query, Request
 from server.config import Settings
 
 from .models import BaseEntity, BaseEntityTaskMixin

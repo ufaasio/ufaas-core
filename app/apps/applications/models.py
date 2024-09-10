@@ -1,9 +1,10 @@
 import uuid
 
-from apps.base_mongo.models import BaseEntity, BusinessEntity, OwnedEntity
+from apps.base_mongo.models import BaseEntity, OwnedEntity
 from pydantic import Field
 from pymongo import ASCENDING, IndexModel
-from .schemas import AppDomainSchema, AppSchema, PermissionSchema, AuthorizedDomainSchema
+
+from .schemas import AppDomainSchema, AuthorizedDomainSchema
 
 
 class Application(OwnedEntity):
@@ -16,7 +17,7 @@ class Application(OwnedEntity):
     description: str | None = None
     logo: str | None = None
     is_published: bool = False
-    
+
     support_email: str | None = None
     app_domain_info: AppDomainSchema = AppDomainSchema()
     developer_contact_emails: list[str] = []

@@ -4,14 +4,13 @@ from decimal import Decimal
 from enum import Enum
 from typing import Literal
 
+from apps.base.models import ImmutableBusinessOwnedEntity
+from apps.base_mongo.models import BusinessOwnedEntity
+from apps.base_mongo.tasks import TaskMixin
 from beanie import Link
 from pydantic import field_validator
 from sqlalchemy import select
 from sqlalchemy.orm import Mapped, mapped_column
-
-from apps.base.models import ImmutableBusinessOwnedEntity
-from apps.base_mongo.models import BusinessOwnedEntity
-from apps.base_mongo.tasks import TaskMixin
 from utils.numtools import decimal_amount
 
 from .schemas import Participant
@@ -24,6 +23,8 @@ class StatusEnum(str, Enum):
 
 
 class Wallet(BusinessOwnedEntity):
+    is_income_wallet: bool = False
+    income_wallet_currency: str | None = None
 
     async def get_holds(
         self, currency: str | None = None, status: StatusEnum | None = StatusEnum.ACTIVE
@@ -60,6 +61,9 @@ class Wallet(BusinessOwnedEntity):
     async def get_currencies(self):
         from server.db import async_session
 
+        if self.is_income_wallet:
+            return [self.income_wallet_currency]
+
         async with async_session() as session:
             query = (
                 select(Transaction.currency)
@@ -77,6 +81,11 @@ class Wallet(BusinessOwnedEntity):
             for currency in await self.get_currencies():
                 balance.update(await self.get_balance(currency))
             return balance
+
+        if self.is_income_wallet:
+            if currency == self.income_wallet_currency:
+                return {currency: Decimal("Infinity")}
+            return {currency: Decimal(0)}
 
         async with async_session() as session:
             query = (

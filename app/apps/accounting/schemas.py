@@ -3,9 +3,8 @@ from datetime import datetime
 from decimal import Decimal
 from typing import Any, Literal
 
-from pydantic import BaseModel, field_validator
-
 from apps.base.schemas import BusinessOwnedEntitySchema
+from pydantic import BaseModel, field_validator, model_validator
 from utils.numtools import decimal_amount
 
 
@@ -15,11 +14,22 @@ class WalletSchema(BusinessOwnedEntitySchema):
 
 class WalletDetailSchema(BusinessOwnedEntitySchema):
     balance: dict[str, Decimal] = {}
+    is_income_wallet: bool = False
+    income_wallet_currency: str | None = None
 
 
 class WalletCreateSchema(BaseModel):
     user_id: uuid.UUID
     meta_data: dict[str, Any] | None = None
+
+    is_income_wallet: bool = False
+    income_wallet_currency: str | None = None
+
+    @model_validator(mode="before")
+    def validate_income_wallet(cls, values):
+        if values.get("is_income_wallet") and not values.get("income_wallet_currency"):
+            raise ValueError("income_wallet_currency is required for income wallet")
+        return values
 
 
 class WalletUpdateSchema(BaseModel):

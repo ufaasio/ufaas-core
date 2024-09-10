@@ -4,13 +4,15 @@ from contextlib import asynccontextmanager
 
 import fastapi
 import pydantic
+from apps.accounting.routes import router as accounting_router
+
+# from apps.applications.routes import router as application_router
+from apps.business_mongo.routes import router as business_router
+from core import exceptions
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
-from fastapi.staticfiles import StaticFiles
 from json_advanced import dumps
 from usso.exceptions import USSOException
-
-from core import exceptions
 
 from . import config, db
 
@@ -27,7 +29,7 @@ async def lifespan(app: fastapi.FastAPI):  # type: ignore
 
 
 app = fastapi.FastAPI(
-    title="FastAPI Launchpad",
+    title=config.Settings.project_name.replace("-", " ").title(),
     # description=DESCRIPTION,
     version="0.1.0",
     contact={
@@ -104,16 +106,14 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-from apps.accounting.routes import router as accounting_router
-from apps.applications.routes import router as application_router
-from apps.business_mongo.routes import router as business_router
 
 app.include_router(business_router, prefix="/api/v1")
 app.include_router(accounting_router, prefix="/api/v1")
-app.include_router(application_router, prefix="/api/v1")
+# app.include_router(application_router, prefix="/api/v1")
 
 
 # Mount the htmlcov directory to be served at /coverage
+# from fastapi.staticfiles import StaticFiles
 # app.mount(
 #     "/coverage", StaticFiles(directory=config.Settings.coverage_dir), name="coverage"
 # )

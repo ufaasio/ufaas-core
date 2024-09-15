@@ -4,7 +4,7 @@ from decimal import Decimal
 from typing import Any, Literal
 
 from apps.base.schemas import BusinessOwnedEntitySchema
-from pydantic import BaseModel, field_validator, model_validator
+from pydantic import BaseModel, field_validator, model_validator, field_serializer
 from utils.numtools import decimal_amount
 
 
@@ -16,6 +16,10 @@ class WalletDetailSchema(BusinessOwnedEntitySchema):
     balance: dict[str, Decimal] = {}
     is_income_wallet: bool = False
     income_wallet_currency: str | None = None
+
+    @field_serializer("balance")
+    def serialize_balance(cls, value):
+        return {k: (v if v.is_finite() else 0) for k, v in value.items()}
 
 
 class WalletCreateSchema(BaseModel):
@@ -72,6 +76,10 @@ class TransactionSchema(BusinessOwnedEntitySchema):
     balance: Decimal
     description: str | None = None
     note: str | None
+
+    @field_serializer("balance", "amount")
+    def serialize_balance(cls, value):
+        return str(value)
 
 
 class TransactionNoteUpdateSchema(BaseModel):

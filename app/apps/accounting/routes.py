@@ -319,7 +319,7 @@ class TransactionRouter(AbstractAuthSQLRouter[Transaction, TransactionSchema]):
     ):
         auth = await self.get_auth(request)
         items, total = await self.model.list_total_combined(
-            user_id=auth.user_id,
+            # user_id=auth.user_id,
             business_name=auth.business.name,
             wallet_id=wallet_id,
             offset=offset,

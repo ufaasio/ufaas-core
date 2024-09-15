@@ -192,6 +192,8 @@ class AbstractTaskRouter(AbstractBaseRouter[TE, TS]):
         self, model: Type[TE], user_dependency: Any, schema: TS, *args, **kwargs
     ):
         super().__init__(model, user_dependency, schema=schema, *args, **kwargs)
+
+    def config_routes(self, **kwargs):
         self.router.add_api_route(
             "/{uid:uuid}/start",
             self.start_item,

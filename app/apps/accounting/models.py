@@ -117,11 +117,15 @@ class Wallet(BusinessOwnedEntity):
         currency: str | None = None,
         status: StatusEnum | None = None,
     ) -> Decimal:
+        from bson import UUID_SUBTYPE, Binary
+
+        uid = Binary.from_uuid(self.uid, UUID_SUBTYPE)
+
         current_time = datetime.now()
         pipeline = [
             {
                 "$match": {
-                    "wallet_id": self.uid,
+                    "wallet_id": uid,
                     "status": "active",
                     "expires_at": {"$gt": current_time},
                     "currency": currency,

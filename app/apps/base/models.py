@@ -1,5 +1,5 @@
 import uuid
-from datetime import datetime, timezone
+from datetime import datetime
 from typing import Any
 
 from sqlalchemy import JSON, event, select
@@ -26,11 +26,11 @@ class BaseEntity:
         index=True,
     )
     created_at: Mapped[datetime] = mapped_column(
-        default=lambda: datetime.now(timezone.utc),
+        default=lambda: datetime.now(),
         index=True,
     )
     updated_at: Mapped[datetime] = mapped_column(
-        default=lambda: datetime.now(timezone.utc), onupdate=func.now()
+        default=lambda: datetime.now(), onupdate=func.now()
     )
     is_deleted: Mapped[bool] = mapped_column(default=False)
     meta_data: Mapped[dict | None] = mapped_column(JSON, nullable=True)

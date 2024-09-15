@@ -496,9 +496,7 @@ class ProposalRouter(
     async def start_item(self, request: Request, uid: uuid.UUID):
         auth = await self.get_auth(request)
         # TODO check who can start processing of the proposal
-        item: Proposal = await self.get_item(
-            uid, business_name=auth.business.name
-        )
+        item: Proposal = await self.get_item(uid, business_name=auth.business.name)
         await item.start_processing()
         return ProposalSchema(**item.model_dump())
 

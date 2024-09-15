@@ -1,12 +1,11 @@
 import uuid
 from typing import Literal
 
-from fastapi import Request
-from pydantic import BaseModel
-
 from apps.base.auth_middlewares import UserData, Usso
 from apps.business_mongo.models import Business
 from core.exceptions import BaseHTTPException
+from fastapi import Request
+from pydantic import BaseModel
 
 
 class AuthorizationData(BaseModel):
@@ -66,13 +65,12 @@ async def authorization_middleware(request: Request) -> AuthorizationData:
         jwt_config=authorization.business.config.jwt_config
     ).jwt_access_security(request)
 
-    
     if authorization.user.data.get("authentication_method") == "app":
         authorization.issuer_type = "App"
         authorization.user_id = authorization.user.data.get("app_id")
         authorization.app_id = authorization.user.data.get("app_id")
         authorization.scopes = authorization.user.data.get("scopes")
-        
+
     elif authorization.business.user_id == authorization.user.uid:
         authorization.issuer_type = "Business"
         authorization.user_id = (

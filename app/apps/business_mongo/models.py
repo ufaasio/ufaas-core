@@ -1,8 +1,7 @@
+from apps.business_mongo.schemas import Config
 from fastapi_mongo_base.models import OwnedEntity
 from pydantic import model_validator
 from pymongo import ASCENDING, IndexModel
-
-from apps.business_mongo.schemas import Config
 from server.config import Settings
 
 

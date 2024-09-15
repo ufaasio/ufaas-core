@@ -51,20 +51,24 @@ class WalletRouter(AbstractAuthRouter[Wallet, WalletDetailSchema]):
     ):
         auth = await self.get_auth(request)
 
+        async def get_paginated(items: list[Wallet], total: int):
+            balances = await asyncio.gather(*[item.get_balance() for item in items])
+            items_in_schema = [
+                self.list_item_schema(**item.model_dump(), balance=balance)
+                for item, balance in zip(items, balances)
+            ]
+            paginated_response = PaginatedResponse(
+                items=items_in_schema, offset=offset, limit=limit, total=total
+            )
+            return paginated_response
+
         items, total = await self.model.list_total_combined(
             user_id=auth.user_id,
             business_name=auth.business.name,
             offset=offset,
             limit=limit,
         )
-        balances = await asyncio.gather(*[item.get_balance() for item in items])
-        items_in_schema = [
-            self.list_item_schema(**item.model_dump(), balance=balance)
-            for item, balance in zip(items, balances)
-        ]
-        paginated_response = PaginatedResponse(
-            items=items_in_schema, offset=offset, limit=limit, total=total
-        )
+        paginated_response = await get_paginated(items, total)
 
         if auth.issuer_type == "Business" or paginated_response.total > 0:
             # TODO check waht to do if app
@@ -81,10 +85,8 @@ class WalletRouter(AbstractAuthRouter[Wallet, WalletDetailSchema]):
             )
         ]
         total = 1
-        items_in_schema = [self.list_item_schema(**item.model_dump()) for item in items]
-        return PaginatedResponse(
-            items=items_in_schema, offset=offset, limit=limit, total=total
-        )
+        paginated_response = await get_paginated(items, total)
+        return paginated_response
 
     async def retrieve_item(self, request: Request, uid: uuid.UUID):
         item: Wallet = await super().retrieve_item(request, uid)

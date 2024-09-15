@@ -27,7 +27,7 @@ class WalletDetailSchema(BusinessOwnedEntitySchema):
 
     @field_serializer("balance")
     def serialize_balance(self, balance: dict[str, Decimal]) -> dict[str, Decimal]:
-        return {k: (v if v.is_finite() else 0) for k, v in balance.items()}
+        return {k: (v if v.is_finite() else Decimal(0)) for k, v in balance.items()}
 
 
 class WalletCreateSchema(BaseModel):

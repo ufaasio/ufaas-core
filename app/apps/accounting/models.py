@@ -351,7 +351,7 @@ class Transaction(ImmutableBusinessOwnedEntity):
     ):
         base_query = [cls.is_deleted == is_deleted]
 
-        if hasattr(cls, "user_id"):
+        if hasattr(cls, "user_id") and user_id:
             base_query.append(cls.user_id == user_id)
         if hasattr(cls, "business_name"):
             base_query.append(cls.business_name == business_name)

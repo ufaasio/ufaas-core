@@ -447,6 +447,10 @@ class ProposalRouter(
             raise BaseHTTPException(
                 400, error="invalid_status", message="Invalid task status"
             )
+        
+        import logging
+        logging.info(f"create_item: {data}")
+        logging.info(f"create_item: {request.headers}")
 
         auth = await self.get_auth(request)
         data = data.model_dump() | dict(

@@ -2,6 +2,7 @@ import logging
 
 import httpx
 import pytest
+
 from apps.accounting.models import Wallet
 from apps.accounting.schemas import TransactionSchema
 

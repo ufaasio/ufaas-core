@@ -2,11 +2,12 @@ import asyncio
 import uuid
 
 import fastapi
-from apps.business_mongo.middlewares import AuthorizationData, AuthorizationException
-from core.exceptions import BaseHTTPException
 from fastapi import Query, Request
 from fastapi_mongo_base.routes import AbstractTaskRouter
 from fastapi_mongo_base.schemas import PaginatedResponse
+
+from apps.business_mongo.middlewares import AuthorizationData, AuthorizationException
+from core.exceptions import BaseHTTPException
 from server.config import Settings
 
 from .abstract_routers import AbstractAuthRouter, AbstractAuthSQLRouter

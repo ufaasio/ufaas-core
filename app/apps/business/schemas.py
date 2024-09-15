@@ -1,7 +1,7 @@
 import json
 from typing import Any
 
-from apps.base.auth_middlewares import JWTSecret
+from apps.base.auth_middlewares import JWTConfig
 from apps.base.schemas import OwnedEntitySchema
 from pydantic import BaseModel, model_validator
 from server.config import Settings
@@ -9,7 +9,7 @@ from server.config import Settings
 
 class Config(BaseModel):
     cors_domains: str = ""
-    jwt_secret: JWTSecret = JWTSecret(**json.loads(Settings.JWT_SECRET))
+    jwt_config: JWTConfig = JWTConfig(**json.loads(Settings.JWT_CONFIG))
 
     def __hash__(self):
         return hash(self.model_dump_json())

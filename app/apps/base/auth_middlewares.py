@@ -13,7 +13,7 @@ from usso.exceptions import USSOException
 logger = logging.getLogger("usso")
 
 
-class JWTSecret(BaseModel):
+class JWTConfig(BaseModel):
     jwk_url: str | None = None
     secret: str | None = None
     type: str = "RS256"
@@ -49,17 +49,17 @@ class JWTSecret(BaseModel):
 
 
 class Usso:
-    def __init__(self, jwt_secret: str | dict | JWTSecret | None = None):
-        if jwt_secret is None:
+    def __init__(self, jwt_config: str | dict | JWTConfig | None = None):
+        if jwt_config is None:
             self.jwk_url = os.getenv("USSO_JWK_URL")
             return
 
-        if isinstance(jwt_secret, str):
-            jwt_secret = json.loads(jwt_secret)
-        if isinstance(jwt_secret, dict):
-            jwt_secret = JWTSecret(**jwt_secret)
+        if isinstance(jwt_config, str):
+            jwt_config = json.loads(jwt_config)
+        if isinstance(jwt_config, dict):
+            jwt_config = JWTConfig(**jwt_config)
 
-        self.jwk_url = jwt_secret
+        self.jwk_url = jwt_config
 
     def get_authorization_scheme_param(
         self,

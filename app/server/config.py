@@ -34,8 +34,8 @@ class Settings(metaclass=Singleton):
     )
     mongo_uri: str = os.getenv("MONGO_URI", default="mongodb://localhost:27017")
 
-    JWT_SECRET: str = os.getenv(
-        "USSO_JWT_SECRET",
+    JWT_CONFIG: str = os.getenv(
+        "USSO_JWT_CONFIG",
         default='{"jwk_url": "https://usso.io/website/jwks.json","type": "RS256","header": {"type": "Cookie", "name": "usso_access_token"} }',
     )
 

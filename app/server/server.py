@@ -4,16 +4,15 @@ from contextlib import asynccontextmanager
 
 import fastapi
 import pydantic
-from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse
-from json_advanced import dumps
-from usso.exceptions import USSOException
-
 from apps.accounting.routes import router as accounting_router
 
 # from apps.applications.routes import router as application_router
 from apps.business_mongo.routes import router as business_router
 from core import exceptions
+from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
+from json_advanced import dumps
+from usso.exceptions import USSOException
 
 from . import config, db
 
@@ -22,7 +21,7 @@ from . import config, db
 async def lifespan(app: fastapi.FastAPI):  # type: ignore
     """Initialize application services."""
     config.Settings.config_logger()
-    
+
     await db.init_db()
     logging.info("Startup complete")
     yield

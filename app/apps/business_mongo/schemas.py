@@ -1,11 +1,10 @@
 import json
 from typing import Any
 
-from fastapi_mongo_base.schemas import OwnedEntitySchema
-from pydantic import BaseModel, model_validator
-
 from apps.base.auth_middlewares import JWTConfig
 from core.currency import Currency
+from fastapi_mongo_base.schemas import OwnedEntitySchema
+from pydantic import BaseModel, model_validator
 from server.config import Settings
 
 

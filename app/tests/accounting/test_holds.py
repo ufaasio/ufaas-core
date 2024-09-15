@@ -3,7 +3,6 @@ import uuid
 
 import httpx
 import pytest
-
 from apps.accounting.models import Wallet
 
 from ..constants import StaticData

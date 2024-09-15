@@ -318,13 +318,17 @@ class TransactionRouter(AbstractAuthSQLRouter[Transaction, TransactionSchema]):
         limit: int = Query(10, ge=0, le=Settings.page_max_limit),
     ):
         auth = await self.get_auth(request)
-        items, total = await self.model.list_total_combined(
-            # user_id=auth.user_id,
+        query_param = dict(
             business_name=auth.business.name,
-            wallet_id=wallet_id,
             offset=offset,
             limit=limit,
         )
+        if wallet_id:
+            query_param["wallet_id"] = wallet_id
+        if auth.user_id:
+            query_param["user_id"] = auth.user_id
+
+        items, total = await self.model.list_total_combined(**query_param)
 
         items_in_schema = await asyncio.gather(
             *[self.get_in_schema(item) for item in items]
@@ -380,6 +384,29 @@ class TransactionWRouter(TransactionRouter):
 
     def config_routes(self, **kwargs):
         super().config_routes(**kwargs)
+
+    async def list_items(
+        self,
+        request: Request,
+        wallet_id: uuid.UUID | None = None,
+        offset: int = Query(0, ge=0),
+        limit: int = Query(10, ge=0, le=Settings.page_max_limit),
+    ):
+        auth = await self.get_auth(request)
+        items, total = await self.model.list_total_combined(
+            user_id=auth.user_id,
+            business_name=auth.business.name,
+            wallet_id=wallet_id,
+            offset=offset,
+            limit=limit,
+        )
+
+        items_in_schema = await asyncio.gather(
+            *[self.get_in_schema(item) for item in items]
+        )
+        return PaginatedResponse(
+            items=items_in_schema, offset=offset, limit=limit, total=total
+        )
 
 
 class ProposalRouter(

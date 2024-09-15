@@ -4,16 +4,19 @@ from decimal import Decimal
 from enum import Enum
 from typing import Literal
 
-from apps.base.models import ImmutableBusinessOwnedEntity
-from apps.base_mongo.models import BusinessOwnedEntity
-from apps.base_mongo.tasks import TaskMixin
 from beanie import Link
+from fastapi_mongo_base.models import BusinessOwnedEntity
+from fastapi_mongo_base.tasks import TaskMixin
 from pydantic import field_validator
 from sqlalchemy import select
 from sqlalchemy.orm import Mapped, mapped_column
+from pymongo import ASCENDING, IndexModel
+
+from apps.base.models import ImmutableBusinessOwnedEntity
+from core.currency import Currency
 from utils.numtools import decimal_amount
 
-from .schemas import Participant
+from .schemas import Participant, WalletType
 
 
 class StatusEnum(str, Enum):
@@ -23,8 +26,11 @@ class StatusEnum(str, Enum):
 
 
 class Wallet(BusinessOwnedEntity):
-    is_income_wallet: bool = False
-    income_wallet_currency: str | None = None
+    wallet_type: WalletType = WalletType.user
+    main_currency: Currency = Currency.none
+
+    class Settings(BusinessOwnedEntity.Settings):
+        pass
 
     async def get_holds(
         self, currency: str | None = None, status: StatusEnum | None = StatusEnum.ACTIVE
@@ -61,8 +67,13 @@ class Wallet(BusinessOwnedEntity):
     async def get_currencies(self):
         from server.db import async_session
 
-        if self.is_income_wallet:
-            return [self.income_wallet_currency]
+        currencies = []
+
+        if self.main_currency != Currency.none:
+            currencies.append(self.main_currency)
+
+        if self.wallet_type == "app_income":
+            return currencies
 
         async with async_session() as session:
             query = (
@@ -71,7 +82,10 @@ class Wallet(BusinessOwnedEntity):
                 .distinct()
             )
             result = await session.execute(query)
-            return result.scalars().all()
+
+            currencies = sorted(list(set(currencies + result.scalars().all())))
+
+        return currencies
 
     async def get_balance(self, currency: str | None = None) -> dict[str, Decimal]:
         from server.db import async_session
@@ -82,8 +96,8 @@ class Wallet(BusinessOwnedEntity):
                 balance.update(await self.get_balance(currency))
             return balance
 
-        if self.is_income_wallet:
-            if currency == self.income_wallet_currency:
+        if self.wallet_type == "app_income":
+            if currency == self.main_currency:
                 return {currency: Decimal("Infinity")}
             return {currency: Decimal(0)}
 
@@ -133,6 +147,9 @@ class WalletHold(BusinessOwnedEntity):
     currency: str
     description: str | None = None
     wallet: Link[Wallet]
+
+    class Settings(BusinessOwnedEntity.Settings):
+        pass
 
     @field_validator("amount", mode="before")
     def validate_amount(cls, value):
@@ -345,6 +362,11 @@ class TransactionNote(BusinessOwnedEntity):
     transaction_id: uuid.UUID
     note: str
 
+    class Settings(BusinessOwnedEntity.Settings):
+        indexes = BusinessOwnedEntity.Settings.indexes + [
+            IndexModel([("transaction_id", ASCENDING)]),
+        ]
+
 
 class Proposal(BusinessOwnedEntity, TaskMixin):
     issuer: Literal["user", "business", "app"] = "business"
@@ -356,6 +378,11 @@ class Proposal(BusinessOwnedEntity, TaskMixin):
     # status: str | None
 
     participants: list[Participant]
+
+    class Settings(BusinessOwnedEntity.Settings):
+        indexes = BusinessOwnedEntity.Settings.indexes + [
+            IndexModel([("issuer_id", ASCENDING)]),
+        ]
 
     @field_validator("amount", mode="before")
     def validate_amount(cls, value):

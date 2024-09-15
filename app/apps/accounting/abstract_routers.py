@@ -1,20 +1,21 @@
 import uuid
 from typing import Any, Type, TypeVar
 
-from apps.base.models import BusinessEntity as BusinessEntitySQL
-from apps.base.schemas import BusinessEntitySchema, PaginatedResponse
-from apps.base_mongo.models import BusinessEntity
-from apps.business.routes import AbstractBusinessBaseRouter as AbstractBusinessSQLRouter
-from apps.business_mongo.middlewares import AuthorizationData, authorization_middleware
-from apps.business_mongo.routes import AbstractBusinessBaseRouter
 from fastapi import Query, Request
+from fastapi_mongo_base.models import BusinessEntity
+from fastapi_mongo_base.schemas import BusinessEntitySchema, PaginatedResponse
+
+from apps.base.models import BusinessEntity as BusinessEntitySQL
+from apps.business.routes import AbstractBusinessRouter as AbstractBusinessSQLRouter
+from apps.business_mongo.middlewares import AuthorizationData, authorization_middleware
+from apps.business_mongo.routes import AbstractBusinessRouter
 from server.config import Settings
 
 T = TypeVar("T", bound=BusinessEntity)
 TS = TypeVar("TS", bound=BusinessEntitySchema)
 
 
-class AbstractAuthRouter(AbstractBusinessBaseRouter[T, TS]):
+class AbstractAuthRouter(AbstractBusinessRouter[T, TS]):
     async def get_auth(self, request: Request) -> AuthorizationData:
         return await authorization_middleware(request)
 

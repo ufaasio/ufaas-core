@@ -1,7 +1,8 @@
-from apps.base_mongo.models import OwnedEntity
-from apps.business.schemas import Config
+from fastapi_mongo_base.models import OwnedEntity
 from pydantic import model_validator
 from pymongo import ASCENDING, IndexModel
+
+from apps.business_mongo.schemas import Config
 from server.config import Settings
 
 
@@ -11,8 +12,8 @@ class Business(OwnedEntity):
     description: str | None = None
     config: Config = Config()
 
-    class Settings:
-        indexes = [
+    class Settings(OwnedEntity.Settings):
+        indexes = OwnedEntity.Settings.indexes + [
             IndexModel([("name", ASCENDING)], unique=True),
             IndexModel([("domain", ASCENDING)], unique=True),
         ]

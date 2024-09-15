@@ -1,15 +1,17 @@
+import logging
 import asyncio
 from typing import AsyncGenerator
 
-from apps.accounting import models as accounting_models
-from apps.base.models import Base
-from apps.base_mongo import models as base_mongo_models
-from apps.business_mongo import models as business_mongo_models
 from beanie import init_beanie
+from fastapi_mongo_base import models as base_mongo_models
 from motor.motor_asyncio import AsyncIOMotorClient
-from server.config import Settings
 from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
 from sqlalchemy.orm import sessionmaker
+
+from apps.accounting import models as accounting_models
+from apps.base.models import Base
+from apps.business_mongo import models as business_mongo_models
+from server.config import Settings
 from utils.basic import get_all_subclasses
 
 # from apps.business import models as business_models
@@ -39,10 +41,16 @@ async def init_sql_db():
 async def init_mongo_db():
     client = AsyncIOMotorClient(Settings.mongo_uri)
     db = client.get_database(Settings.project_name)
+    document_models = [
+        cls
+        for cls in get_all_subclasses(base_mongo_models.BaseEntity)
+        if not (
+            hasattr(cls, "Settings")
+            and getattr(cls.Settings, "is_abstract", lambda: False)()
+        )
+    ]
 
-    await init_beanie(
-        database=db, document_models=get_all_subclasses(base_mongo_models.BaseEntity)
-    )
+    await init_beanie(database=db, document_models=document_models)
 
     return db
 

@@ -1,9 +1,10 @@
 import uuid
 from datetime import datetime
 from decimal import Decimal
+from enum import Enum
 from typing import Any, Literal
 
-from apps.base.schemas import BusinessOwnedEntitySchema
+from fastapi_mongo_base.schemas import BusinessOwnedEntitySchema
 from pydantic import (
     BaseModel,
     ConfigDict,
@@ -11,7 +12,17 @@ from pydantic import (
     field_validator,
     model_validator,
 )
+
+from core.currency import Currency
 from utils.numtools import decimal_amount
+
+
+class WalletType(str, Enum):
+    user = "user"
+    business = "business"
+    app = "app"
+    app_operational = "app_operational"
+    app_income = "app_income"
 
 
 class WalletSchema(BusinessOwnedEntitySchema):
@@ -20,8 +31,8 @@ class WalletSchema(BusinessOwnedEntitySchema):
 
 class WalletDetailSchema(BusinessOwnedEntitySchema):
     balance: dict[str, Decimal] = {}
-    is_income_wallet: bool = False
-    income_wallet_currency: str | None = None
+    wallet_type: WalletType = WalletType.user
+    main_currency: Currency
 
     model_config = ConfigDict(allow_inf_nan=True)
 
@@ -29,18 +40,26 @@ class WalletDetailSchema(BusinessOwnedEntitySchema):
     def serialize_balance(self, balance: dict[str, Decimal]) -> dict[str, Decimal]:
         return {k: (v if v.is_finite() else Decimal(0)) for k, v in balance.items()}
 
+    @field_serializer("wallet_type")
+    def serialize_wallet_type(self, wallet_type: WalletType) -> str:
+        return wallet_type.value
+
+    @field_serializer("main_currency")
+    def serialize_main_currency(self, main_currency: Currency) -> str:
+        return main_currency.value
+
 
 class WalletCreateSchema(BaseModel):
     user_id: uuid.UUID
     meta_data: dict[str, Any] | None = None
 
-    is_income_wallet: bool = False
-    income_wallet_currency: str | None = None
+    wallet_type: WalletType = WalletType.user
+    main_currency: Currency = Currency.none
 
     @model_validator(mode="before")
-    def validate_income_wallet(cls, values):
-        if values.get("is_income_wallet") and not values.get("income_wallet_currency"):
-            raise ValueError("income_wallet_currency is required for income wallet")
+    def validate_wallet_type(cls, values):
+        if values.get("wallet_type") and not values.get("main_currency"):
+            raise ValueError("main_currency is required for income wallet")
         return values
 
 

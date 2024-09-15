@@ -1,27 +1,24 @@
 import uuid
 from typing import TypeVar
 
-from apps.base.handlers import create_dto
-from apps.base.schemas import BusinessEntitySchema, PaginatedResponse
-from apps.base_mongo.models import BusinessEntity
-from apps.base_mongo.routes import AbstractBaseRouter
-from apps.business.schemas import (
-    BusinessDataCreateSchema,
-    BusinessDataUpdateSchema,
-    BusinessSchema,
-)
 from fastapi import Depends, Request
-from server.config import Settings
+from fastapi_mongo_base.handlers import create_dto
+from fastapi_mongo_base.models import BusinessEntity
+from fastapi_mongo_base.routes import AbstractBaseRouter
+from fastapi_mongo_base.schemas import BusinessEntitySchema, PaginatedResponse
 from usso.fastapi import jwt_access_security
+
+from server.config import Settings
 
 from .middlewares import get_business
 from .models import Business
+from .schemas import BusinessDataCreateSchema, BusinessDataUpdateSchema, BusinessSchema
 
 T = TypeVar("T", bound=BusinessEntity)
 TS = TypeVar("TS", bound=BusinessEntitySchema)
 
 
-class AbstractBusinessBaseRouter(AbstractBaseRouter[T, TS]):
+class AbstractBusinessRouter(AbstractBaseRouter[T, TS]):
     async def list_items(
         self,
         request: Request,

@@ -2,11 +2,12 @@ import asyncio
 import uuid
 
 import fastapi
-from apps.base.schemas import PaginatedResponse
-from apps.base_mongo.routes import AbstractTaskRouter
+from fastapi import Query, Request
+from fastapi_mongo_base.routes import AbstractTaskRouter
+from fastapi_mongo_base.schemas import PaginatedResponse
+
 from apps.business_mongo.middlewares import AuthorizationData, AuthorizationException
 from core.exceptions import BaseHTTPException
-from fastapi import Query, Request
 from server.config import Settings
 
 from .abstract_routers import AbstractAuthRouter, AbstractAuthSQLRouter
@@ -71,7 +72,12 @@ class WalletRouter(AbstractAuthRouter[Wallet, WalletDetailSchema]):
 
         items = [
             await self.model.create_item(
-                dict(user_id=auth.user_id, business_name=auth.business.name)
+                dict(
+                    user_id=auth.user_id,
+                    business_name=auth.business.name,
+                    main_currency=auth.business.config.default_currency,
+                    wallet_type="user",
+                )
             )
         ]
         total = 1
@@ -89,6 +95,9 @@ class WalletRouter(AbstractAuthRouter[Wallet, WalletDetailSchema]):
         auth = await self.get_auth(request)
         if auth.business_or_user == "User":
             raise AuthorizationException("User cannot create wallet")
+
+        # TODO check if creating with this wallet_type is authorized
+
         item: Wallet = await super().create_item(request, data.model_dump())
         balance = await item.get_balance()
         return self.create_response_schema(**item.model_dump(), balance=balance)

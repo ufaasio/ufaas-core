@@ -10,7 +10,7 @@ from apps.accounting.models import (
     Wallet,
 )
 from apps.business_mongo.models import Business
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 from server.db import async_session
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -19,6 +19,8 @@ class ParticipantWallet(BaseModel):
     amount: Decimal
     wallet: Wallet
     balance: Decimal
+
+    model_config = ConfigDict(allow_inf_nan=True)
 
 
 async def participant_validator(
@@ -82,7 +84,6 @@ async def get_participant_wallets(
             participant.wallet_id, business_name=business_name, user_id=None
         )
         balance = (await wallet.get_balance(currency)).get(currency, 0)
-        print(f"Balance type: {type(balance)}, value: {balance}")
         return ParticipantWallet(
             wallet=wallet, amount=participant.amount, balance=balance
         )

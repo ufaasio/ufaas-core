@@ -80,6 +80,8 @@ class Usso:
                     error="invalid_token_type",
                 )
             decoded["token"] = token
+            # TODO check data
+            decoded["data"] = decoded | decoded.get("data", {})
             return UserData(**decoded)
         except jwt.exceptions.ExpiredSignatureError:
             if kwargs.get("raise_exception", True):

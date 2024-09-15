@@ -67,7 +67,8 @@ class WalletRouter(AbstractAuthRouter[Wallet, WalletDetailSchema]):
             items=items_in_schema, offset=offset, limit=limit, total=total
         )
 
-        if auth.business_or_user == "Business" or paginated_response.total > 0:
+        if auth.issuer_type == "Business" or paginated_response.total > 0:
+            # TODO check waht to do if app
             return paginated_response
 
         items = [
@@ -93,7 +94,7 @@ class WalletRouter(AbstractAuthRouter[Wallet, WalletDetailSchema]):
 
     async def create_item(self, request: Request, data: WalletCreateSchema):
         auth = await self.get_auth(request)
-        if auth.business_or_user == "User":
+        if auth.issuer_type == "User":
             raise AuthorizationException("User cannot create wallet")
 
         # TODO check if creating with this wallet_type is authorized
@@ -106,8 +107,11 @@ class WalletRouter(AbstractAuthRouter[Wallet, WalletDetailSchema]):
         self, request: Request, uid: uuid.UUID, data: WalletUpdateSchema
     ):
         auth = await self.get_auth(request)
-        if auth.business_or_user == "User":
+        if auth.issuer_type == "User":
             raise AuthorizationException("User cannot update wallet")
+        
+        # TODO check app permissions
+        
         item: Wallet = await super().update_item(
             request, uid, data.model_dump(exclude_none=True)
         )
@@ -116,7 +120,7 @@ class WalletRouter(AbstractAuthRouter[Wallet, WalletDetailSchema]):
 
     async def delete_item(self, request: Request, uid: uuid.UUID):
         auth = await self.get_auth(request)
-        if auth.business_or_user == "User":
+        if auth.issuer_type == "User":
             raise AuthorizationException("User cannot create wallet")
 
         # item = await super().delete_item(request, uid)
@@ -203,7 +207,7 @@ class WalletHoldRouter(AbstractAuthRouter[WalletHold, WalletHoldSchema]):
     ):
         auth = await self.get_auth(request)
 
-        if auth.business_or_user == "User":
+        if auth.issuer_type == "User":
             raise AuthorizationException("User cannot create wallet hold")
 
         wallet: Wallet = await WalletRouter().get_item(
@@ -228,7 +232,7 @@ class WalletHoldRouter(AbstractAuthRouter[WalletHold, WalletHoldSchema]):
         self, request: Request, uid: uuid.UUID, data: WalletHoldUpdateSchema
     ):
         auth = await self.get_auth(request)
-        if auth.business_or_user == "User":
+        if auth.issuer_type == "User":
             raise AuthorizationException("User cannot update wallet hold")
         return await super().update_item(
             request, uid, data.model_dump(exclude_none=True)
@@ -430,7 +434,7 @@ class ProposalRouter(
 
     async def get_auth(self, request: Request) -> AuthorizationData:
         auth = await super().get_auth(request)
-        if auth.business_or_user == "User":
+        if auth.issuer_type == "User":
             raise AuthorizationException("User do not have access to proposal")
         return auth
 

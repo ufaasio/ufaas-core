@@ -2,6 +2,9 @@ import asyncio
 import logging
 from decimal import Decimal
 
+from pydantic import BaseModel, ConfigDict
+from sqlalchemy.ext.asyncio import AsyncSession
+
 from apps.accounting.models import (
     Participant,
     Proposal,
@@ -10,9 +13,7 @@ from apps.accounting.models import (
     Wallet,
 )
 from apps.business_mongo.models import Business
-from pydantic import BaseModel, ConfigDict
 from server.db import async_session
-from sqlalchemy.ext.asyncio import AsyncSession
 
 
 class ParticipantWallet(BaseModel):

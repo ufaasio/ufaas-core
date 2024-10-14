@@ -1,11 +1,9 @@
 import logging
-from urllib.parse import urlparse
 
 import httpx
 import pytest
 
 from .constants import StaticData
-from fastapi_mongo_base._utils import basic
 
 # @pytest.mark.asyncio
 # async def test_business_list_empty(client: httpx.AsyncClient, auth_headers_business):

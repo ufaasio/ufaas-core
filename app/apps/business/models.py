@@ -1,9 +1,10 @@
-from apps.base.models import BaseEntity
-from apps.business_mongo.schemas import Config
-from server.db import async_session
 from sqlalchemy import JSON
 from sqlalchemy.future import select
 from sqlalchemy.orm import Mapped, mapped_column
+
+from apps.base.models import BaseEntity
+from apps.business_mongo.schemas import Config
+from server.db import async_session
 
 
 class Business(BaseEntity):

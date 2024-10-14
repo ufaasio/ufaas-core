@@ -1,10 +1,11 @@
 import uuid
+
 from aiocache import cached
-from fastapi_mongo_base._utils.aionetwork import aio_request
 from fastapi_mongo_base._utils.basic import try_except_wrapper
 from pydantic import model_validator
-from server.config import Settings
 from usso.async_session import AsyncUssoSession
+
+from server.config import Settings
 
 from .schemas import BusinessSchema
 
@@ -90,7 +91,7 @@ class Business(BusinessSchema):
                 ) as response:
                     response.raise_for_status()
                     return await response.json()
-        except Exception as e:
+        except Exception:
             return {}
 
     @classmethod
@@ -105,16 +106,19 @@ class Business(BusinessSchema):
         *args,
         **kwargs,
     ):
-        return await cls._get_query(
-            name=name,
-            origin=origin,
-            user_id=user_id,
-            uid=uid,
-            offset=offset,
-            limit=limit,
-            *args,
-            **kwargs,
-        ) or {}
+        return (
+            await cls._get_query(
+                name=name,
+                origin=origin,
+                user_id=user_id,
+                uid=uid,
+                offset=offset,
+                limit=limit,
+                *args,
+                **kwargs,
+            )
+            or {}
+        )
 
     @classmethod
     async def get_with_query(cls, name: str = None, origin: str = None):

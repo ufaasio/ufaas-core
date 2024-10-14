@@ -1,3 +1,4 @@
+import logging
 import uuid
 
 from aiocache import cached
@@ -90,7 +91,8 @@ class Business(BusinessSchema):
                 ) as response:
                     response.raise_for_status()
                     return await response.json()
-        except Exception:
+        except Exception as e:
+            logging.error(f"Error getting business: {e}")
             return {}
 
     @classmethod

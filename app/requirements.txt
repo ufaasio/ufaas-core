@@ -21,4 +21,4 @@ aiofiles
 
 usso[fastapi]
 beanie
-fastapi-mongo-base>=0.4.0
+fastapi-mongo-base

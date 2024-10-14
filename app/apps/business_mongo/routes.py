@@ -6,9 +6,8 @@ from fastapi_mongo_base.handlers import create_dto
 from fastapi_mongo_base.models import BusinessEntity
 from fastapi_mongo_base.routes import AbstractBaseRouter
 from fastapi_mongo_base.schemas import BusinessEntitySchema, PaginatedResponse
-from usso.fastapi import jwt_access_security
-
 from server.config import Settings
+from usso.fastapi import jwt_access_security
 
 from .middlewares import get_business
 from .models import Business

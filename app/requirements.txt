@@ -19,6 +19,6 @@ aiohttp
 aiocache
 aiofiles
 
-usso
+usso[fastapi]
 beanie
 fastapi-mongo-base>=0.4.0

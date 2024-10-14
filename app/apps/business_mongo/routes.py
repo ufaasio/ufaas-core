@@ -6,8 +6,9 @@ from fastapi_mongo_base.handlers import create_dto
 from fastapi_mongo_base.models import BusinessEntity
 from fastapi_mongo_base.routes import AbstractBaseRouter
 from fastapi_mongo_base.schemas import BusinessEntitySchema, PaginatedResponse
-from server.config import Settings
 from usso.fastapi import jwt_access_security
+
+from server.config import Settings
 
 from .middlewares import get_business
 from .models import Business
@@ -109,6 +110,30 @@ class BusinessRouter(AbstractBaseRouter[Business, BusinessSchema]):
 
         self.create_request_schema = BusinessDataCreateSchema
         self.update_request_schema = BusinessDataUpdateSchema
+
+    def config_routes(self, **kwargs):
+        self.router.add_api_route(
+            "/",
+            self.list_items,
+            methods=["GET"],
+            response_model=self.list_response_schema,
+            status_code=200,
+        )
+        self.router.add_api_route(
+            "/{uid:uuid}",
+            self.retrieve_item,
+            methods=["GET"],
+            response_model=self.retrieve_response_schema,
+            status_code=200,
+        )
+
+    async def list_items(
+        self,
+        request: Request,
+        offset: int = 0,
+        limit: int = 10,
+    ):
+        return await super().list_items(request, offset, limit)
 
     async def create_item(
         self,

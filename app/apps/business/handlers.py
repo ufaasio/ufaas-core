@@ -1,9 +1,10 @@
 from typing import TypeVar
 
-from apps.base.models import BusinessEntity, BusinessOwnedEntity
-from apps.business.models import Business
 from fastapi import Request
 from usso import UserData
+
+from apps.base.models import BusinessEntity, BusinessOwnedEntity
+from apps.business.models import Business
 
 from .middlewares import get_business
 

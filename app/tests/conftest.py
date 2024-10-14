@@ -8,14 +8,23 @@ import pytest
 import pytest_asyncio
 from beanie import init_beanie
 from fastapi_mongo_base import models as base_mongo_models
+from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
+from sqlalchemy.orm import sessionmaker
+
 from server.config import Settings
 from server.db import async_session
 from server.server import app as fastapi_app
-from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
-from sqlalchemy.orm import sessionmaker
 from utils.basic import get_all_subclasses
 
 from .constants import StaticData
+
+
+@pytest.fixture(scope="session", autouse=True)
+def setup_debugpy():
+    if os.getenv("DEBUGPY", "False").lower() in ("true", "1", "yes"):
+        debugpy.listen(("0.0.0.0", 3020))
+        debugpy.wait_for_client()
+
 
 DATABASE_URL = "sqlite+aiosqlite:///:memory:"
 
@@ -118,10 +127,3 @@ async def access_token_user():
 @pytest_asyncio.fixture(scope="session")
 async def auth_headers_business(access_token_business):
     return {"Authorization": f"Bearer {access_token_business}"}
-
-
-@pytest.fixture(scope="session", autouse=True)
-def setup_debugpy():
-    if os.getenv("DEBUGPY", "False").lower() in ("true", "1", "yes"):
-        debugpy.listen(("0.0.0.0", 3020))
-        debugpy.wait_for_client()

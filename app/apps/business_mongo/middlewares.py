@@ -1,12 +1,11 @@
 import uuid
 from typing import Literal
 
-from fastapi import Request
-from pydantic import BaseModel
-
-from apps.base.auth_middlewares import UserData, Usso
 from apps.business_mongo.models import Business
 from core.exceptions import BaseHTTPException
+from fastapi import Request
+from pydantic import BaseModel
+from usso.fastapi.auth_middleware import UserData, Usso
 
 
 class AuthorizationData(BaseModel):

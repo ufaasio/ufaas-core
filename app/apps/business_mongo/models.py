@@ -3,9 +3,8 @@ import uuid
 from aiocache import cached
 from fastapi_mongo_base._utils.basic import try_except_wrapper
 from pydantic import model_validator
-from usso.async_session import AsyncUssoSession
-
 from server.config import Settings
+from usso.async_session import AsyncUssoSession
 
 from .schemas import BusinessSchema
 

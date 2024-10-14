@@ -1,9 +1,8 @@
 import fastapi
-from fastapi.responses import PlainTextResponse
-from starlette.middleware.base import BaseHTTPMiddleware
-
 from apps.business_mongo.models import Business
 from core.exceptions import BaseHTTPException
+from fastapi.responses import PlainTextResponse
+from starlette.middleware.base import BaseHTTPMiddleware
 
 
 class DynamicCORSMiddleware(BaseHTTPMiddleware):

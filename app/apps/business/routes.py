@@ -1,11 +1,6 @@
 import uuid
 from typing import TypeVar
 
-from fastapi import Depends, Query, Request
-from fastapi_mongo_base.handlers import create_dto
-from fastapi_mongo_base.schemas import BusinessEntitySchema, PaginatedResponse
-from usso.fastapi import jwt_access_security
-
 from apps.base.models import BusinessEntity
 from apps.base.routes import AbstractBaseRouter
 from apps.business_mongo.schemas import (
@@ -13,7 +8,11 @@ from apps.business_mongo.schemas import (
     BusinessDataUpdateSchema,
     BusinessSchema,
 )
+from fastapi import Depends, Query, Request
+from fastapi_mongo_base.handlers import create_dto
+from fastapi_mongo_base.schemas import BusinessEntitySchema, PaginatedResponse
 from server.config import Settings
+from usso.fastapi import jwt_access_security
 
 from .middlewares import get_business
 from .models import Business

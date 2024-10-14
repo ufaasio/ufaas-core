@@ -9,9 +9,14 @@ from usso.fastapi.auth_middleware import JWTConfig
 
 
 class Config(BaseModel):
-    cors_domains: str = ""
+    core_url: str = "https://core.ufaas.io/"
+    api_os_url: str = "https://core.ufaas.io/api/v1/apps"
+    sso_url: str = "https://sso.ufaas.io/app-auth/access"
+    core_sso_url: str = "https://sso.ufaas.io/app-auth/access"
+
+    allowed_origins: list[str] = []
     jwt_config: JWTConfig = JWTConfig(**json.loads(Settings.JWT_CONFIG))
-    default_currency: Currency = Currency.none
+    default_currency: str = "IRR"
 
     def __hash__(self):
         return hash(self.model_dump_json())

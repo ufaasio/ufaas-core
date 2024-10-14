@@ -1,6 +1,5 @@
 import fastapi
 from apps.business_mongo.models import Business
-from core.exceptions import BaseHTTPException
 from fastapi.responses import PlainTextResponse
 from starlette.middleware.base import BaseHTTPMiddleware
 
@@ -14,7 +13,7 @@ class DynamicCORSMiddleware(BaseHTTPMiddleware):
 
     async def dispatch(self, request: fastapi.Request, call_next):
         origin = request.headers.get("origin")
-        allowed_origins = await self.get_allowed_origins(origin=origin)
+        allowed_origins = await self.get_allowed_origins(origin=request.url.hostname)
         headers = {}
         if origin in allowed_origins:
             headers = {
@@ -27,12 +26,12 @@ class DynamicCORSMiddleware(BaseHTTPMiddleware):
         if request.method == "OPTIONS":
             return PlainTextResponse("", status_code=200, headers=headers)
 
-        if origin and origin not in allowed_origins:
-            raise BaseHTTPException(
-                status_code=403,
-                error="origin_not_allowed",
-                message="Origin not allowed",
-            )
+        # if origin and origin not in allowed_origins:
+        #     raise BaseHTTPException(
+        #         status_code=403,
+        #         error="origin_not_allowed",
+        #         message="Origin not allowed",
+        #     )
 
         response: fastapi.Response = await call_next(request)
         response.headers.update(headers)

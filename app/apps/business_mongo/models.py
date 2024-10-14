@@ -1,4 +1,3 @@
-import logging
 import uuid
 
 from aiocache import cached
@@ -80,20 +79,16 @@ class Business(BusinessSchema):
         if uid:
             params["uid"] = str(uid)
 
-        try:
-            async with AsyncUssoSession(
-                api_key=Settings.USSO_API_KEY,
-                sso_refresh_url=f"{Settings.USSO_URL}/auth/refresh",
-                user_id=Settings.USSO_USER_ID,
-            ) as client:
-                async with client.get(
-                    url=Settings.business_domains_url, params=params
-                ) as response:
-                    response.raise_for_status()
-                    return await response.json()
-        except Exception as e:
-            logging.error(f"Error getting business: {e}")
-            return {}
+        async with AsyncUssoSession(
+            api_key=Settings.USSO_API_KEY,
+            sso_refresh_url=f"{Settings.USSO_URL}/auth/refresh",
+            user_id=Settings.USSO_USER_ID,
+        ) as client:
+            async with client.get(
+                url=Settings.business_domains_url, params=params
+            ) as response:
+                response.raise_for_status()
+                return await response.json()
 
     @classmethod
     async def get_query(
@@ -134,6 +129,12 @@ class Business(BusinessSchema):
 
     @classmethod
     async def get_by_origin(cls, origin: str):
+        schema_index = origin.find("://")
+        if schema_index == -1:
+            schema_index = 0
+        else:
+            schema_index += 3
+        origin = origin[schema_index:]
         return await cls.get_with_query(origin=origin)
 
     @classmethod

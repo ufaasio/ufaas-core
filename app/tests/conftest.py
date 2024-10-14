@@ -18,6 +18,14 @@ from utils.basic import get_all_subclasses
 
 from .constants import StaticData
 
+
+@pytest.fixture(scope="session", autouse=True)
+def setup_debugpy():
+    if os.getenv("DEBUGPY", "False").lower() in ("true", "1", "yes"):
+        debugpy.listen(("0.0.0.0", 3020))
+        debugpy.wait_for_client()
+
+
 DATABASE_URL = "sqlite+aiosqlite:///:memory:"
 
 # Create the engine and session factory for the test database
@@ -119,10 +127,3 @@ async def access_token_user():
 @pytest_asyncio.fixture(scope="session")
 async def auth_headers_business(access_token_business):
     return {"Authorization": f"Bearer {access_token_business}"}
-
-
-@pytest.fixture(scope="session", autouse=True)
-def setup_debugpy():
-    if os.getenv("DEBUGPY", "False").lower() in ("true", "1", "yes"):
-        debugpy.listen(("0.0.0.0", 3020))
-        debugpy.wait_for_client()

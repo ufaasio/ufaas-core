@@ -38,6 +38,16 @@ class Settings(metaclass=Singleton):
         "USSO_JWT_CONFIG",
         default='{"jwk_url": "https://usso.io/website/jwks.json","type": "RS256","header": {"type": "Cookie", "name": "usso_access_token"} }',
     )
+    USSO_API_KEY: str = os.getenv("USSO_API_KEY")
+    USSO_URL: str = os.getenv("USSO_URL", default="https://sso.usso.io")
+    USSO_USER_ID: str = os.getenv("USSO_USER_ID")
+    business_domains_url = (
+        os.getenv(
+            "UFAAS_BUSINESS_DOMAINS_URL",
+            "https://business.ufaas.io/api/v1/apps/business",
+        )
+        + "/businesses/"
+    )
 
     testing: bool = os.getenv("TESTING", default=False)
 

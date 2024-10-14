@@ -9,10 +9,6 @@ from fastapi.responses import JSONResponse
 from json_advanced import dumps
 from usso.exceptions import USSOException
 
-from apps.accounting.routes import router as accounting_router
-
-# from apps.applications.routes import router as application_router
-from apps.business_mongo.routes import router as business_router
 from core import exceptions
 
 from . import config, db
@@ -107,6 +103,13 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+
+from core.middlewares import DynamicCORSMiddleware
+
+app.add_middleware(DynamicCORSMiddleware)
+
+from apps.accounting.routes import router as accounting_router
+from apps.business_mongo.routes import router as business_router
 
 app.include_router(business_router, prefix="/api/v1")
 app.include_router(accounting_router, prefix="/api/v1")

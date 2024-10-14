@@ -3,8 +3,8 @@ from typing import Literal
 
 from fastapi import Request
 from pydantic import BaseModel
+from usso.fastapi.auth_middleware import UserData, Usso
 
-from apps.base.auth_middlewares import UserData, Usso
 from apps.business_mongo.models import Business
 from core.exceptions import BaseHTTPException
 
@@ -65,6 +65,9 @@ async def authorization_middleware(request: Request) -> AuthorizationData:
     authorization.user = await Usso(
         jwt_config=authorization.business.config.jwt_config
     ).jwt_access_security(request)
+
+    # TODO check data
+    authorization.user.data = authorization.user.data or {}
 
     if authorization.user.data.get("authentication_method") == "app":
         authorization.issuer_type = "App"

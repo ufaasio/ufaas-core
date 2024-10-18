@@ -3,7 +3,6 @@ import uuid
 
 from aiocache import cached
 from fastapi_mongo_base._utils.basic import try_except_wrapper
-from pydantic import model_validator
 from server.config import Settings
 from usso.async_session import AsyncUssoSession
 
@@ -140,14 +139,6 @@ class Business(BusinessSchema):
     async def get_by_name(cls, name: str):
         return await cls.get_with_query(name=name)
 
-    @model_validator(mode="before")
-    def validate_domain(cls, data: dict):
-        if not data.get("domain"):
-            business_name_domain = f"{data.get('name')}.{Settings.root_url}"
-            data["domain"] = business_name_domain
-
-        return data
-
     @classmethod
     async def list_items(
         cls,
@@ -213,9 +204,3 @@ class Business(BusinessSchema):
             return
         business = BusinessSchema(**businesses_list[0])
         return business
-
-    async def save(self):
-        pass
-
-    async def delete(self):
-        pass

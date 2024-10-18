@@ -28,8 +28,8 @@ class Wallet(BusinessOwnedEntity):
     wallet_type: WalletType = WalletType.user
     main_currency: Currency = Currency.none
 
-    class Settings(BusinessOwnedEntity.Settings):
-        pass
+    class Settings:
+        indexes = BusinessOwnedEntity.Settings.indexes
 
     async def get_holds(
         self, currency: str | None = None, status: StatusEnum | None = StatusEnum.ACTIVE
@@ -151,8 +151,13 @@ class WalletHold(BusinessOwnedEntity):
     description: str | None = None
     wallet: Link[Wallet]
 
-    class Settings(BusinessOwnedEntity.Settings):
-        pass
+    class Settings:
+        indexes = BusinessOwnedEntity.Settings.indexes + [
+            IndexModel([("wallet_id", ASCENDING)]),
+            IndexModel([("expires_at", ASCENDING)]),
+            IndexModel([("status", ASCENDING)]),
+            IndexModel([("currency", ASCENDING)]),
+        ]
 
     @field_validator("amount", mode="before")
     def validate_amount(cls, value):
@@ -365,7 +370,7 @@ class TransactionNote(BusinessOwnedEntity):
     transaction_id: uuid.UUID
     note: str
 
-    class Settings(BusinessOwnedEntity.Settings):
+    class Settings:
         indexes = BusinessOwnedEntity.Settings.indexes + [
             IndexModel([("transaction_id", ASCENDING)]),
         ]
@@ -382,7 +387,7 @@ class Proposal(BusinessOwnedEntity, TaskMixin):
 
     participants: list[Participant]
 
-    class Settings(BusinessOwnedEntity.Settings):
+    class Settings:
         indexes = BusinessOwnedEntity.Settings.indexes + [
             IndexModel([("issuer_id", ASCENDING)]),
         ]

@@ -1,23 +1,21 @@
 import pytest
 import pytest_asyncio
 from apps.accounting.models import Wallet
-from apps.business_mongo.models import Business
 
 from ..constants import StaticData
 
-
-@pytest_asyncio.fixture(scope="module", autouse=True)
-async def setup_business():
-    business = Business(
-        business_id=StaticData.business_id_1,
-        business_name=StaticData.business_name_1,
-        domain=StaticData.business_domain_1,
-        name=StaticData.business_name_1,
-        user_id=StaticData.user_id_1_1,
-    )
-    await business.save()
-    yield business
-    await business.delete()
+# @pytest_asyncio.fixture(scope="module", autouse=True)
+# async def setup_business():
+#     business = Business(
+#         business_id=StaticData.business_id_1,
+#         business_name=StaticData.business_name_1,
+#         domain=StaticData.business_domain_1,
+#         name=StaticData.business_name_1,
+#         user_id=StaticData.user_id_1_1,
+#     )
+#     await business.save()
+#     yield business
+#     await business.delete()
 
 
 @pytest.fixture(scope="module")

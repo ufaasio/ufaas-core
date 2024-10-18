@@ -28,6 +28,14 @@ class BusinessSchema(OwnedEntitySchema):
     description: str | None = None
     config: Config = Config()
 
+    @model_validator(mode="before")
+    def validate_domain(cls, data: dict):
+        if not data.get("domain"):
+            business_name_domain = f"{data.get('name')}.{Settings.root_url}"
+            data["domain"] = business_name_domain
+
+        return data
+
 
 class BusinessDataCreateSchema(BaseModel):
     name: str

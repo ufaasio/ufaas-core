@@ -74,6 +74,18 @@ async def pydantic_exception_handler(
     )
 
 
+@app.exception_handler(fastapi.exceptions.RequestValidationError)
+async def request_validation_exception_handler(
+    request: fastapi.Request, exc: fastapi.exceptions.RequestValidationError
+):
+    logging.error(
+        f"request_validation_exception:  {request.url} {exc}\n{(await request.body())[:100]}"
+    )
+    from fastapi.exception_handlers import request_validation_exception_handler
+
+    return await request_validation_exception_handler(request, exc)
+
+
 @app.exception_handler(Exception)
 async def general_exception_handler(request: fastapi.Request, exc: Exception):
     import traceback

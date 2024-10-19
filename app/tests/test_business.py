@@ -36,15 +36,18 @@ from .constants import StaticData
 #     assert resp_json["domain"] == data["domain"]
 #     assert resp_json["uid"] != data["uid"]
 
+base_route = "/api/v1/apps/business/businesses/"
+
 
 @pytest.mark.asyncio
-async def test_business_list_with_business(
-    client: httpx.AsyncClient, auth_headers_business
-):
+async def test_business_list_with_business(auth_headers_business):
     # list business
-    response = await client.get("/api/v1/businesses/", headers=auth_headers_business)
+    async with httpx.AsyncClient(
+        base_url="https://business.ufaas.io", headers=auth_headers_business
+    ) as business_client:
+        response = await business_client.get(base_route)
+        resp_json = response.json()
 
-    resp_json = response.json()
     logging.info(f"business_list: {resp_json}")
     assert response.status_code == 200
     assert type(resp_json.get("items")) == list
@@ -55,36 +58,37 @@ async def test_business_list_with_business(
 
 
 @pytest.mark.asyncio
-async def test_business_retrieve_no_auth(
-    client: httpx.AsyncClient, auth_headers_business
-):
+async def test_business_retrieve_no_auth():
     # retrieve business without access token
-    response = await client.get(f"/api/v1/businesses/{StaticData.business_id_1}")
-    assert response.status_code == 401
+    async with httpx.AsyncClient(
+        base_url="https://business.ufaas.io"
+    ) as business_client:
+        response = await business_client.get(f"{base_route}{StaticData.business_id_1}")
+        assert response.status_code == 401
 
 
 @pytest.mark.asyncio
-async def test_business_retrieve_not_found(
-    client: httpx.AsyncClient, auth_headers_business
-):
+async def test_business_retrieve_not_found(auth_headers_business):
     # retrieve business not found
-    response = await client.get(
-        f"/api/v1/businesses/{StaticData.business_id_2}", headers=auth_headers_business
-    )
-    resp_json = response.json()
+    async with httpx.AsyncClient(
+        base_url="https://business.ufaas.io", headers=auth_headers_business
+    ) as business_client:
+        response = await business_client.get(f"{base_route}{StaticData.business_id_2}")
+        assert response.status_code == 404
+        resp_json = response.json()
     logging.info(f"business_retrieve: {resp_json}")
-    assert response.status_code == 200
 
 
 @pytest.mark.asyncio
-async def test_business_retrieve(client: httpx.AsyncClient, auth_headers_business):
+async def test_business_retrieve(auth_headers_business):
     # retrieve business
-    response = await client.get(
-        f"/api/v1/businesses/{StaticData.business_id_1}", headers=auth_headers_business
-    )
-    resp_json = response.json()
+    async with httpx.AsyncClient(
+        base_url="https://business.ufaas.io", headers=auth_headers_business
+    ) as business_client:
+        response = await business_client.get(f"{base_route}{StaticData.business_id_1}")
+        resp_json = response.json()
+        assert response.status_code == 200
     logging.info(f"business_retrieve: {resp_json}")
-    assert response.status_code == 200
     assert resp_json["uid"] == StaticData.business_id_1
 
 

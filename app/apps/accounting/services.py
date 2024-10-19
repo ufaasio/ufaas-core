@@ -9,7 +9,7 @@ from apps.accounting.models import (
     TransactionNote,
     Wallet,
 )
-from apps.business_mongo.models import Business
+from ufaas_fastapi_business.models import Business
 from pydantic import BaseModel, ConfigDict
 from server.db import async_session
 from sqlalchemy.ext.asyncio import AsyncSession

@@ -3,7 +3,8 @@ from typing import AsyncGenerator
 
 from apps.accounting import models as accounting_models
 from apps.base.models import Base
-from apps.business_mongo import models as business_mongo_models
+
+# from apps.business_mongo import models as business_mongo_models
 from beanie import init_beanie
 from fastapi_mongo_base import models as base_mongo_models
 from motor.motor_asyncio import AsyncIOMotorClient

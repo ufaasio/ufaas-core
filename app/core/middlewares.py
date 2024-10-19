@@ -1,7 +1,7 @@
 import fastapi
-from apps.business_mongo.models import Business
 from fastapi.responses import PlainTextResponse
 from starlette.middleware.base import BaseHTTPMiddleware
+from ufaas_fastapi_business.models import Business
 
 
 class DynamicCORSMiddleware(BaseHTTPMiddleware):

@@ -3,7 +3,7 @@ from typing import TypeVar
 
 from apps.base.models import BusinessEntity
 from apps.base.routes import AbstractBaseRouter
-from apps.business_mongo.schemas import (
+from .schemas import (
     BusinessDataCreateSchema,
     BusinessDataUpdateSchema,
     BusinessSchema,

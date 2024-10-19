@@ -108,9 +108,10 @@ from core.middlewares import DynamicCORSMiddleware
 app.add_middleware(DynamicCORSMiddleware)
 
 from apps.accounting.routes import router as accounting_router
-from apps.business_mongo.routes import router as business_router
 
-app.include_router(business_router, prefix="/api/v1")
+# from apps.business_mongo.routes import router as business_router
+
+# app.include_router(business_router, prefix="/api/v1")
 app.include_router(accounting_router, prefix="/api/v1")
 # app.include_router(application_router, prefix="/api/v1")
 

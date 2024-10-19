@@ -2,11 +2,12 @@ import logging
 
 import httpx
 import pytest
+from ..constants import StaticData
 
 
 @pytest.mark.asyncio
 async def test_wallet_create_business(
-    constants, client: httpx.AsyncClient, access_token_business
+    constants: StaticData, client: httpx.AsyncClient, access_token_business
 ):
     auth_headers = {"Authorization": f"Bearer {access_token_business}"}
     data = dict(user_id=constants.user_id_1_1)
@@ -20,7 +21,7 @@ async def test_wallet_create_business(
 
 @pytest.mark.asyncio
 async def test_wallet_update_business(
-    constants, client: httpx.AsyncClient, access_token_business
+    constants: StaticData, client: httpx.AsyncClient, access_token_business
 ):
     auth_headers = {"Authorization": f"Bearer {access_token_business}"}
     data = dict(meta_data={"key": "value"})
@@ -54,7 +55,7 @@ async def test_wallet_list_business(client: httpx.AsyncClient, access_token_busi
 
 @pytest.mark.asyncio
 async def test_wallet_delete_business(
-    constants, client: httpx.AsyncClient, access_token_business
+    constants: StaticData, client: httpx.AsyncClient, access_token_business
 ):
     auth_headers = {"Authorization": f"Bearer {access_token_business}"}
     response = await client.get(

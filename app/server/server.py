@@ -125,6 +125,7 @@ from apps.accounting.routes import router as accounting_router
 
 # app.include_router(business_router, prefix="/api/v1")
 app.include_router(accounting_router, prefix="/api/v1")
+app.include_router(accounting_router, prefix="/api/v1/apps/core")
 # app.include_router(application_router, prefix="/api/v1")
 
 

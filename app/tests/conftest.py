@@ -126,4 +126,3 @@ async def access_token_user():
 @pytest_asyncio.fixture(scope="session")
 async def auth_headers_business(access_token_business):
     return {"Authorization": f"Bearer {access_token_business}"}
-

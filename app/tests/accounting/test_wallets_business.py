@@ -2,6 +2,7 @@ import logging
 
 import httpx
 import pytest
+
 from ..constants import StaticData
 
 

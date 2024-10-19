@@ -9,10 +9,10 @@ from apps.accounting.models import (
     TransactionNote,
     Wallet,
 )
-from ufaas_fastapi_business.models import Business
 from pydantic import BaseModel, ConfigDict
 from server.db import async_session
 from sqlalchemy.ext.asyncio import AsyncSession
+from ufaas_fastapi_business.models import Business
 
 
 class ParticipantWallet(BaseModel):

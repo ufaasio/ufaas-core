@@ -8,9 +8,9 @@ from fastapi_mongo_base.routes import AbstractTaskRouter
 from fastapi_mongo_base.schemas import PaginatedResponse
 from server.config import Settings
 from ufaas_fastapi_business.middlewares import AuthorizationData, AuthorizationException
+from ufaas_fastapi_business.routes import AbstractAuthRouter
 
 from .abstract_routers import AbstractAuthSQLRouter
-from ufaas_fastapi_business.routes import AbstractAuthRouter, AbstractBusinessBaseRouter
 from .models import Proposal, Transaction, TransactionNote, Wallet, WalletHold
 from .schemas import (
     ProposalCreateSchema,

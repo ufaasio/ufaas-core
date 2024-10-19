@@ -11,7 +11,6 @@ from ufaas_fastapi_business.middlewares import (
     AuthorizationData,
     authorization_middleware,
 )
-from ufaas_fastapi_business.routes import AbstractAuthRouter
 
 T = TypeVar("T", bound=BusinessEntity)
 TS = TypeVar("TS", bound=BusinessEntitySchema)

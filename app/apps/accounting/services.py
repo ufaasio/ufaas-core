@@ -29,8 +29,9 @@ async def participant_validator(
     return True
 
 
-async def fail_proposal(proposal: Proposal, message: str = None):
-    logging.warning(f"Error processing proposal {proposal.uid} - {message}")
+async def fail_proposal(proposal: Proposal, message: str = None, **kwargs):
+    message_str = "\n".join([message] + [f"{k}: {v}" for k, v in kwargs.items()])
+    logging.warning(f"Error processing proposal {proposal.uid} - {message_str}")
     proposal.task_status = "error"
     await proposal.save_report(message, emit=False)
     await proposal.save_and_emit()
@@ -186,5 +187,9 @@ async def process_proposal(proposal: Proposal):
             await success_proposal(business, proposal, participants_wallets, session)
 
         except Exception as e:
+            import traceback
+
+            traceback_str = "".join(traceback.format_tb(e.__traceback__))
+
             await session.rollback()
-            await fail_proposal(proposal, str(e))
+            await fail_proposal(proposal, str(e), traceback=traceback_str)

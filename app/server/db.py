@@ -7,11 +7,11 @@ from apps.base.models import Base
 # from apps.business_mongo import models as business_mongo_models
 from beanie import init_beanie
 from fastapi_mongo_base import models as base_mongo_models
+from fastapi_mongo_base._utils import basic
 from motor.motor_asyncio import AsyncIOMotorClient
 from server.config import Settings
 from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
 from sqlalchemy.orm import sessionmaker
-from fastapi_mongo_base._utils import basic
 
 # from apps.business import models as business_models
 # from apps.applications import models as applications_models

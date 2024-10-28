@@ -46,8 +46,12 @@ async def success_proposal(
 ):
     async with session.begin():
         meta_data = proposal.meta_data or {}
+        balances = {}
 
         for participant in participants_wallets:
+            new_balance = (
+                balances.get(participant.wallet.id) or participant.balance
+            ) + participant.amount
             transaction = Transaction(
                 business_name=proposal.business_name,
                 user_id=participant.wallet.user_id,
@@ -56,10 +60,11 @@ async def success_proposal(
                 wallet_id=participant.wallet.uid,
                 amount=participant.amount,
                 currency=proposal.currency,
-                balance=participant.balance + participant.amount,
+                balance=new_balance,
                 description=proposal.description,
                 # note=proposal.note,
             )
+            balances[participant.wallet.id] = new_balance
             session.add(transaction)
 
     if proposal.note:

@@ -1,5 +1,5 @@
 import uuid
-from datetime import datetime
+from datetime import datetime, date
 from decimal import Decimal
 from enum import Enum
 from typing import Literal
@@ -351,6 +351,8 @@ class Transaction(ImmutableBusinessOwnedEntity):
         business_name: str = None,
         wallet_id: uuid.UUID = None,
         is_deleted: bool = False,
+        start_date: date | None = None,
+        end_date: date | None = None,
         *args,
         **kwargs,
     ):
@@ -362,6 +364,10 @@ class Transaction(ImmutableBusinessOwnedEntity):
             base_query.append(cls.business_name == business_name)
         if wallet_id:
             base_query.append(cls.wallet_id == wallet_id)
+        if start_date:
+            base_query.append(cls.created_at >= start_date)
+        if end_date:
+            base_query.append(cls.created_at <= end_date)
 
         return base_query
 
@@ -396,7 +402,7 @@ class Proposal(BusinessOwnedEntity, TaskMixin):
     def validate_amount(cls, value):
         return decimal_amount(value)
 
-    async def get_transactions(self):
+    async def get_transactions(self) -> list[Transaction]:
         from server.db import async_session
 
         async with async_session() as session:

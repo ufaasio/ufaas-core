@@ -2,6 +2,7 @@ import logging
 
 import httpx
 import pytest
+
 from apps.accounting.models import Participant, Proposal, Wallet
 
 from ..constants import StaticData

@@ -1,16 +1,17 @@
 import uuid
 from typing import Any, Type, TypeVar
 
-from apps.base.models import BusinessEntity as BusinessEntitySQL
-from apps.business.routes import AbstractBusinessRouter as AbstractBusinessSQLRouter
 from fastapi import Query, Request
 from fastapi_mongo_base.models import BusinessEntity
 from fastapi_mongo_base.schemas import BusinessEntitySchema, PaginatedResponse
-from server.config import Settings
 from ufaas_fastapi_business.middlewares import (
     AuthorizationData,
     authorization_middleware,
 )
+
+from apps.base.models import BusinessEntity as BusinessEntitySQL
+from apps.business.routes import AbstractBusinessRouter as AbstractBusinessSQLRouter
+from server.config import Settings
 
 T = TypeVar("T", bound=BusinessEntity)
 TS = TypeVar("TS", bound=BusinessEntitySchema)

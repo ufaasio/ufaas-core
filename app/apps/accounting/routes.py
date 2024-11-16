@@ -23,6 +23,7 @@ from .schemas import (
     WalletDetailSchema,
     WalletHoldCreateSchema,
     WalletHoldSchema,
+    WalletType,
     WalletHoldUpdateSchema,
     WalletUpdateSchema,
 )
@@ -50,6 +51,7 @@ class WalletRouter(AbstractAuthRouter[Wallet, WalletDetailSchema]):
         user_id: uuid.UUID | None = None,
         offset: int = Query(0, ge=0),
         limit: int = Query(10, ge=0, le=Settings.page_max_limit),
+        wallet_type: WalletType = None,
     ):
         auth = await self.get_auth(request)
 
@@ -69,6 +71,7 @@ class WalletRouter(AbstractAuthRouter[Wallet, WalletDetailSchema]):
             business_name=auth.business.name,
             offset=offset,
             limit=limit,
+            wallet_type=wallet_type,
         )
         paginated_response = await get_paginated(items, total)
 

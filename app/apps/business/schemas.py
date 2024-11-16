@@ -3,9 +3,8 @@ from typing import Any
 
 from fastapi_mongo_base.schemas import OwnedEntitySchema
 from pydantic import BaseModel, model_validator
-from usso.core import JWTConfig
-
 from server.config import Settings
+from usso.core import JWTConfig
 
 
 class Config(BaseModel):

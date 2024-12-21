@@ -66,11 +66,11 @@ app.include_router(accounting_router, prefix="/api/v1/apps/core")
 
 
 # Mount the htmlcov directory to be served at /coverage
-from fastapi.staticfiles import StaticFiles
+# from fastapi.staticfiles import StaticFiles
 
-app.mount(
-    "/coverage", StaticFiles(directory=config.Settings.coverage_dir), name="coverage"
-)
+# app.mount(
+#     "/coverage", StaticFiles(directory=config.Settings.coverage_dir), name="coverage"
+# )
 
 
 @app.get("/api/v1/health")

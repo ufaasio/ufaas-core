@@ -1,6 +1,7 @@
 uvicorn
 fastapi
 pydantic
+httpx
 
 singleton_package
 json-advanced
@@ -14,12 +15,11 @@ asyncpg
 psycopg2-binary
 databases
 
-aiosqlite
-aiohttp
 aiocache
 aiofiles
-
+aiosqlite
 usso[fastapi]
+
 beanie
 fastapi-mongo-base
 ufaas-fastapi-business

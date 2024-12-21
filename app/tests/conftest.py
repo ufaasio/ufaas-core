@@ -8,12 +8,14 @@ import pytest
 import pytest_asyncio
 from beanie import init_beanie
 from fastapi_mongo_base import models as base_mongo_models
+from fastapi_mongo_base.utils.basic import get_all_subclasses
+from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
+from sqlalchemy.orm import sessionmaker
+from usso.session import UssoSession
+
 from server.config import Settings
 from server.db import async_session
 from server.server import app as fastapi_app
-from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
-from sqlalchemy.orm import sessionmaker
-from utils.basic import get_all_subclasses
 
 from .constants import StaticData
 
@@ -102,25 +104,30 @@ async def client() -> AsyncGenerator[httpx.AsyncClient, None]:
     """Fixture to provide an AsyncClient for FastAPI app."""
 
     async with httpx.AsyncClient(
-        app=fastapi_app, base_url="http://test.ufaas.io"
+        transport=httpx.ASGITransport(app=fastapi_app),
+        base_url="http://test.ufaas.io",
     ) as ac:
         yield ac
 
 
 @pytest_asyncio.fixture(scope="session")
 async def access_token_business():
-    data = {"refresh_token": StaticData.refresh_token}
-    async with httpx.AsyncClient(base_url="https://sso.ufaas.io") as client:
-        response = await client.post("/auth/refresh", json=data)
-        return response.json()["access_token"]
+    usso_session = UssoSession(
+        usso_base_url="https://sso.ufaas.io",
+        usso_api_key=StaticData.usso_api_key,
+        user_id=StaticData.user_id_1_1,
+    )
+    return usso_session.access_token
 
 
 @pytest_asyncio.fixture(scope="session")
 async def access_token_user():
-    data = {"refresh_token": StaticData.refresh_token_user}
-    async with httpx.AsyncClient(base_url="https://sso.ufaas.io") as client:
-        response = await client.post("/auth/refresh", json=data)
-        return response.json()["access_token"]
+    usso_session = UssoSession(
+        usso_base_url="https://sso.ufaas.io",
+        usso_api_key=StaticData.usso_api_key,
+        user_id=StaticData.user_id_1_2,
+    )
+    return usso_session.access_token
 
 
 @pytest_asyncio.fixture(scope="session")

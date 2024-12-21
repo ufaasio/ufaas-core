@@ -1,6 +1,7 @@
 import logging
 
 import pytest
+
 from apps.accounting.models import Participant, Proposal, Wallet
 from apps.accounting.schemas import TransactionSchema
 from apps.accounting.services import process_proposal

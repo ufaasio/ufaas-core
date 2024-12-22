@@ -10,9 +10,9 @@ from fastapi_mongo_base.schemas import PaginatedResponse
 from ufaas_fastapi_business.middlewares import AuthorizationData, AuthorizationException
 from ufaas_fastapi_business.routes import AbstractAuthRouter
 
+from apps.business.routes import AbstractAuthSQLRouter
 from server.config import Settings
 
-from .abstract_routers import AbstractAuthSQLRouter
 from .models import Proposal, Transaction, TransactionNote, Wallet, WalletHold
 from .schemas import (
     ProposalCreateSchema,

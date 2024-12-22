@@ -78,4 +78,14 @@ async def health():
     return {"status": "ok"}
 
 
+@app.get(f"{config.Settings.base_path}/logs", include_in_schema=False)
+async def logs():
+    from collections import deque
+
+    with open(config.Settings.base_dir / "logs" / "info.log", "rb") as f:
+        last_100_lines = deque(f, maxlen=100)
+
+    return [line.decode("utf-8") for line in last_100_lines]
+
+
 config.Settings.config_logger()

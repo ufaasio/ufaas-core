@@ -26,7 +26,12 @@ class WalletType(str, Enum):
 
 
 class WalletSchema(BusinessOwnedEntitySchema):
-    pass
+
+    @classmethod
+    def create_exclude_set(cls) -> list[str]:
+        return list(
+            set(super().create_exclude_set() + ["business_name", "user_id"]) - {"uid"}
+        )
 
 
 class WalletDetailSchema(BusinessOwnedEntitySchema):

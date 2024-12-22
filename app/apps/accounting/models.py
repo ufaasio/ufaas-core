@@ -16,7 +16,7 @@ from sqlalchemy.orm import Mapped, mapped_column
 from apps.base.models import ImmutableBusinessOwnedEntity
 from core.currency import Currency
 
-from .schemas import Participant, WalletType
+from .schemas import Participant, WalletSchema, WalletType
 
 
 class StatusEnum(str, Enum):
@@ -25,7 +25,7 @@ class StatusEnum(str, Enum):
     SUSPENDED = "suspended"
 
 
-class Wallet(BusinessOwnedEntity):
+class Wallet(WalletSchema, BusinessOwnedEntity):
     wallet_type: WalletType = WalletType.user
     main_currency: Currency = Currency.none
 

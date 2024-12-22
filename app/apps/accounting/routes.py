@@ -87,6 +87,7 @@ class WalletRouter(AbstractAuthRouter[Wallet, WalletDetailSchema]):
         items = [
             await self.model.create_item(
                 dict(
+                    uid=auth.user_id,
                     user_id=auth.user_id,
                     business_name=auth.business.name,
                     main_currency=auth.business.config.default_currency,
@@ -324,7 +325,7 @@ class TransactionRouter(AbstractAuthSQLRouter[Transaction, TransactionSchema]):
         self,
         request: Request,
         wallet_id: uuid.UUID | None = None,
-    user_id: uuid.UUID | None = None,mfndb
+        user_id: uuid.UUID | None = None,
         offset: int = Query(0, ge=0),
         limit: int = Query(10, ge=0, le=Settings.page_max_limit),
         created_at_from: datetime | None = None,
@@ -473,11 +474,6 @@ class ProposalRouter(
             raise BaseHTTPException(
                 400, error="invalid_status", message="Invalid task status"
             )
-
-        import logging
-
-        logging.info(f"create_item: {data}")
-        logging.info(f"create_item: {request.headers}")
 
         auth = await self.get_auth(request)
         data = data.model_dump() | dict(

@@ -33,6 +33,10 @@ class WalletSchema(BusinessOwnedEntitySchema):
             set(super().create_exclude_set() + ["business_name", "user_id"]) - {"uid"}
         )
 
+    @classmethod
+    def search_field_set(cls) -> list[str]:
+        return list(set(super().search_field_set() + ["wallet_type"]))
+
 
 class WalletDetailSchema(BusinessOwnedEntitySchema):
     balance: dict[str, Decimal] = {}

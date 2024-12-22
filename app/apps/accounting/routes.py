@@ -87,7 +87,7 @@ class WalletRouter(AbstractAuthRouter[Wallet, WalletDetailSchema]):
         items = [
             await self.model.create_item(
                 dict(
-                    uid=auth.user_id,
+                    # uid=auth.user_id,
                     user_id=auth.user_id,
                     business_name=auth.business.name,
                     main_currency=auth.business.config.default_currency,

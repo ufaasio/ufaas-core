@@ -3,14 +3,15 @@ import uuid
 from datetime import date
 
 import fastapi
-from apps.business.routes import AbstractAuthSQLRouter
 from fastapi import Query, Request
 from fastapi_mongo_base.core.exceptions import BaseHTTPException
 from fastapi_mongo_base.routes import AbstractTaskRouter
 from fastapi_mongo_base.schemas import PaginatedResponse
-from server.config import Settings
 from ufaas_fastapi_business.middlewares import AuthorizationData, AuthorizationException
 from ufaas_fastapi_business.routes import AbstractAuthRouter
+
+from apps.business.routes import AbstractAuthSQLRouter
+from server.config import Settings
 
 from .models import Proposal, Transaction, TransactionNote, Wallet, WalletHold
 from .schemas import (

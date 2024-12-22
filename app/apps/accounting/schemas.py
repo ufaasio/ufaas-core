@@ -4,7 +4,6 @@ from decimal import Decimal
 from enum import Enum
 from typing import Any, Literal
 
-from core.currency import Currency
 from fastapi_mongo_base.schemas import BusinessOwnedEntitySchema
 from fastapi_mongo_base.utils.bsontools import decimal_amount
 from pydantic import (
@@ -14,6 +13,8 @@ from pydantic import (
     field_validator,
     model_validator,
 )
+
+from core.currency import Currency
 
 
 class WalletType(str, Enum):

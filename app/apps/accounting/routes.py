@@ -1,6 +1,6 @@
 import asyncio
 import uuid
-from datetime import date
+from datetime import datetime
 
 import fastapi
 from fastapi import Query, Request
@@ -53,6 +53,8 @@ class WalletRouter(AbstractAuthRouter[Wallet, WalletDetailSchema]):
         offset: int = Query(0, ge=0),
         limit: int = Query(10, ge=0, le=Settings.page_max_limit),
         wallet_type: WalletType = None,
+        created_at_from: datetime = None,
+        created_at_to: datetime = None,
     ):
         auth = await self.get_auth(request)
 
@@ -73,6 +75,8 @@ class WalletRouter(AbstractAuthRouter[Wallet, WalletDetailSchema]):
             offset=offset,
             limit=limit,
             wallet_type=wallet_type,
+            created_at_from=created_at_from,
+            created_at_to=created_at_to,
         )
         paginated_response = await get_paginated(items, total)
 
@@ -322,8 +326,8 @@ class TransactionRouter(AbstractAuthSQLRouter[Transaction, TransactionSchema]):
         wallet_id: uuid.UUID | None = None,
         offset: int = Query(0, ge=0),
         limit: int = Query(10, ge=0, le=Settings.page_max_limit),
-        start_date: date | None = None,
-        end_date: date | None = None,
+        start_date: datetime | None = None,
+        end_date: datetime | None = None,
     ):
         auth = await self.get_auth(request)
         query_param = dict(

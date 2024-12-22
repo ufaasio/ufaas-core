@@ -352,8 +352,8 @@ class Transaction(ImmutableBusinessOwnedEntity):
         business_name: str = None,
         wallet_id: uuid.UUID = None,
         is_deleted: bool = False,
-        start_date: date | None = None,
-        end_date: date | None = None,
+        created_at_from: date | None = None,
+        created_at_to: date | None = None,
         *args,
         **kwargs,
     ):
@@ -365,10 +365,10 @@ class Transaction(ImmutableBusinessOwnedEntity):
             base_query.append(cls.business_name == business_name)
         if wallet_id:
             base_query.append(cls.wallet_id == wallet_id)
-        if start_date:
-            base_query.append(cls.created_at >= start_date)
-        if end_date:
-            base_query.append(cls.created_at <= end_date)
+        if created_at_from:
+            base_query.append(cls.created_at >= created_at_from)
+        if created_at_to:
+            base_query.append(cls.created_at <= created_at_to)
 
         return base_query
 

@@ -326,8 +326,8 @@ class TransactionRouter(AbstractAuthSQLRouter[Transaction, TransactionSchema]):
         wallet_id: uuid.UUID | None = None,
         offset: int = Query(0, ge=0),
         limit: int = Query(10, ge=0, le=Settings.page_max_limit),
-        start_date: datetime | None = None,
-        end_date: datetime | None = None,
+        created_at_from: datetime | None = None,
+        created_at_to: datetime | None = None,
     ):
         auth = await self.get_auth(request)
         query_param = dict(
@@ -339,10 +339,10 @@ class TransactionRouter(AbstractAuthSQLRouter[Transaction, TransactionSchema]):
             query_param["wallet_id"] = wallet_id
         if auth.user_id:
             query_param["user_id"] = auth.user_id
-        if start_date:
-            query_param["start_date"] = start_date
-        if end_date:
-            query_param["end_date"] = end_date
+        if created_at_from:
+            query_param["created_at_from"] = created_at_from
+        if created_at_to:
+            query_param["created_at_to"] = created_at_to
 
         items, total = await self.model.list_total_combined(**query_param)
 

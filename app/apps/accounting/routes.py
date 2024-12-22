@@ -324,6 +324,7 @@ class TransactionRouter(AbstractAuthSQLRouter[Transaction, TransactionSchema]):
         self,
         request: Request,
         wallet_id: uuid.UUID | None = None,
+    user_id: uuid.UUID | None = None,mfndb
         offset: int = Query(0, ge=0),
         limit: int = Query(10, ge=0, le=Settings.page_max_limit),
         created_at_from: datetime | None = None,

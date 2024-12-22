@@ -53,6 +53,17 @@ class BaseEntity:
         return []
 
     @classmethod
+    def search_exclude_set(cls) -> list[str]:
+        return []
+
+    @classmethod
+    def search_field_set(cls) -> list:
+        return ["uid", "is_deleted", "user_id", "business_name"]
+
+    def expired(self, days: int = 3):
+        return (datetime.now() - self.updated_at).days > days
+
+    @classmethod
     def get_query(
         cls,
         user_id: uuid.UUID = None,
@@ -66,6 +77,16 @@ class BaseEntity:
             base_query.append(cls.user_id == user_id)
         if hasattr(cls, "business_name"):
             base_query.append(cls.business_name == business_name)
+        for key, value in kwargs.items():
+            if value is None:
+                continue
+            if cls.search_field_set() and key not in cls.search_field_set():
+                continue
+            if cls.search_exclude_set() and key in cls.search_exclude_set():
+                continue
+            if not hasattr(cls, key):
+                continue
+            base_query.append(getattr(cls, key) == value)
 
         return base_query
 

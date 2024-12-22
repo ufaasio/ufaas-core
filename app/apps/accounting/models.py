@@ -4,7 +4,9 @@ from decimal import Decimal
 from enum import Enum
 from typing import Literal
 
+from apps.base.models import ImmutableBusinessOwnedEntity
 from beanie import Link
+from core.currency import Currency
 from fastapi_mongo_base.models import BusinessOwnedEntity
 from fastapi_mongo_base.tasks import TaskMixin
 from fastapi_mongo_base.utils.bsontools import decimal_amount
@@ -12,9 +14,6 @@ from pydantic import field_validator
 from pymongo import ASCENDING, IndexModel
 from sqlalchemy import select
 from sqlalchemy.orm import Mapped, mapped_column
-
-from apps.base.models import ImmutableBusinessOwnedEntity
-from core.currency import Currency
 
 from .schemas import Participant, WalletType
 
@@ -31,33 +30,6 @@ class Wallet(BusinessOwnedEntity):
 
     class Settings:
         indexes = BusinessOwnedEntity.Settings.indexes
-
-    @classmethod
-    def get_query(
-        cls,
-        user_id: uuid.UUID,
-        business_name: str,
-        is_deleted: bool = False,
-        wallet_id: uuid.UUID = None,
-        wallet_type: WalletType = None,
-        *args,
-        **kwargs,
-    ):
-        query = super().get_query(
-            user_id=user_id,
-            business_name=business_name,
-            is_deleted=is_deleted,
-            *args,
-            **kwargs,
-        )
-
-        base_query = []
-        if wallet_id:
-            base_query.append(cls.uid == wallet_id)
-        if wallet_type:
-            base_query.append(cls.wallet_type == wallet_type)
-
-        return query.find(*base_query)
 
     async def get_holds(
         self, currency: str | None = None, status: StatusEnum | None = StatusEnum.ACTIVE

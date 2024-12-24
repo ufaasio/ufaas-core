@@ -4,7 +4,9 @@ from decimal import Decimal
 from enum import Enum
 from typing import Literal
 
+from apps.base.models import ImmutableBusinessOwnedEntity
 from beanie import Link
+from core.currency import Currency
 from fastapi_mongo_base.models import BusinessOwnedEntity
 from fastapi_mongo_base.tasks import TaskMixin
 from fastapi_mongo_base.utils.bsontools import decimal_amount
@@ -12,9 +14,6 @@ from pydantic import field_validator
 from pymongo import ASCENDING, IndexModel
 from sqlalchemy import select
 from sqlalchemy.orm import Mapped, mapped_column
-
-from apps.base.models import ImmutableBusinessOwnedEntity
-from core.currency import Currency
 
 from .schemas import Participant, WalletSchema, WalletType
 

@@ -2,8 +2,9 @@ import uuid
 from datetime import datetime
 from decimal import Decimal
 from enum import Enum
-from typing import Any, Literal
+from typing import Literal
 
+from core.currency import Currency
 from fastapi_mongo_base.schemas import BusinessOwnedEntitySchema
 from fastapi_mongo_base.utils.bsontools import decimal_amount
 from pydantic import (
@@ -13,8 +14,6 @@ from pydantic import (
     field_validator,
     model_validator,
 )
-
-from core.currency import Currency
 
 
 class WalletType(str, Enum):
@@ -60,20 +59,20 @@ class WalletDetailSchema(BusinessOwnedEntitySchema):
 
 class WalletCreateSchema(BaseModel):
     user_id: uuid.UUID
-    meta_data: dict[str, Any] | None = None
+    meta_data: dict | None = None
 
     wallet_type: WalletType = WalletType.user
     main_currency: Currency = Currency.none
 
     @model_validator(mode="before")
-    def validate_wallet_type(cls, values):
+    def validate_wallet_type(cls, values: dict):
         if values.get("wallet_type") and not values.get("main_currency"):
             raise ValueError("main_currency is required for income wallet")
         return values
 
 
 class WalletUpdateSchema(BaseModel):
-    meta_data: dict[str, Any] | None = None
+    meta_data: dict | None = None
 
 
 class WalletHoldSchema(BusinessOwnedEntitySchema):
@@ -93,14 +92,14 @@ class WalletHoldCreateSchema(BaseModel):
     amount: Decimal
     expires_at: datetime
     status: str = "active"
-    meta_data: dict[str, Any] | None = None
+    meta_data: dict | None = None
     description: str | None = None
 
 
 class WalletHoldUpdateSchema(BaseModel):
     expires_at: datetime | None = None
     status: str | None = None
-    meta_data: dict[str, Any] | None = None
+    meta_data: dict | None = None
     description: str | None = None
 
 
@@ -155,7 +154,7 @@ class ProposalCreateSchema(BaseModel):
     currency: str
     task_status: Literal["draft", "init"] = "draft"
     participants: list[Participant]
-    meta_data: dict[str, Any] | None = None
+    meta_data: dict | None = None
 
 
 class ProposalUpdateSchema(BaseModel):
@@ -163,4 +162,4 @@ class ProposalUpdateSchema(BaseModel):
     task_status: Literal["init"] | None = None
     description: str | None = None
     note: str | None = None
-    meta_data: dict[str, Any] | None = None
+    meta_data: dict | None = None

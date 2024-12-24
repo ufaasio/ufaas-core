@@ -9,12 +9,13 @@ import pytest_asyncio
 from beanie import init_beanie
 from fastapi_mongo_base import models as base_mongo_models
 from fastapi_mongo_base.utils.basic import get_all_subclasses
-from server.config import Settings
-from server.db import async_session
-from server.server import app as fastapi_app
 from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
 from sqlalchemy.orm import sessionmaker
 from usso.session import UssoSession
+
+from server.config import Settings
+from server.db import async_session
+from server.server import app as fastapi_app
 
 from .constants import StaticData
 

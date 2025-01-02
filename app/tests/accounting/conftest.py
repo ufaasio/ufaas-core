@@ -1,5 +1,6 @@
 import pytest
 import pytest_asyncio
+
 from apps.accounting.models import Wallet
 
 from ..constants import StaticData

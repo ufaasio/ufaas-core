@@ -28,6 +28,4 @@ class StaticData(metaclass=Singleton):
     wallet_id_2_1 = "00000002-0000-0000-0002-000000000001"
     wallet_id_2_2 = "00000002-0000-0000-0002-000000000002"
 
-    usso_api_key = os.getenv("USSO_API_KEY")
-    refresh_token = os.getenv("USSO_REFRESH_TOKEN_BUSINESS")
-    refresh_token_user = os.getenv("USSO_REFRESH_TOKEN_USER")
+    usso_api_key = os.getenv("USSO_ADMIN_API_KEY")

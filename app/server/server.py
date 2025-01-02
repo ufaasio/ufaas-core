@@ -26,12 +26,12 @@ app = fastapi.FastAPI(
     version="0.1.0",
     contact={
         "name": "Mahdi Kiani",
-        "url": "https://github.com/mahdikiani/FastAPILaunchpad",
+        "url": "https://github.com/ufaasio/ufaas-core",
         "email": "mahdikiany@gmail.com",
     },
     license_info={
         "name": "MIT License",
-        "url": "https://github.com/mahdikiani/FastAPILaunchpad/blob/main/LICENSE",
+        "url": "https://github.com/ufaasio/ufaas-core/blob/main/LICENSE",
     },
     lifespan=lifespan,
 )
@@ -86,6 +86,3 @@ async def logs():
         last_100_lines = deque(f, maxlen=100)
 
     return [line.decode("utf-8") for line in last_100_lines]
-
-
-config.Settings.config_logger()

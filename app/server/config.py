@@ -24,6 +24,6 @@ class Settings(BaseSettings):
         "DATABASE_URL_SYNC", default="sqlite:///./test.db"
     )
 
-    USSO_API_KEY: str = os.getenv("USSO_API_KEY")
+    USSO_API_KEY: str = os.getenv("USSO_ADMIN_API_KEY")
     USSO_URL: str = os.getenv("USSO_URL", default="https://sso.usso.io")
     USSO_USER_ID: str = os.getenv("USSO_USER_ID")

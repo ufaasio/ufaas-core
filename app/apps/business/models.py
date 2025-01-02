@@ -1,10 +1,9 @@
+from apps.base.models import BaseEntity
+from server.db import async_session
 from sqlalchemy import JSON
 from sqlalchemy.future import select
 from sqlalchemy.orm import Mapped, mapped_column
 from ufaas_fastapi_business.schemas import Config
-
-from apps.base.models import BaseEntity
-from server.db import async_session
 
 
 class Business(BaseEntity):

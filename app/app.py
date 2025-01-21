@@ -14,5 +14,5 @@ if __name__ == "__main__":
         port=8000,
         # reload=True,
         # access_log=False,
-        workers=1,
+        workers=2,
     )

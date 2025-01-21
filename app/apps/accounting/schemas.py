@@ -4,6 +4,7 @@ from decimal import Decimal
 from enum import Enum
 from typing import Literal
 
+from core.currency import Currency
 from fastapi_mongo_base.schemas import BusinessOwnedEntitySchema
 from fastapi_mongo_base.utils.bsontools import decimal_amount
 from pydantic import (
@@ -13,8 +14,6 @@ from pydantic import (
     field_validator,
     model_validator,
 )
-
-from core.currency import Currency
 
 
 class WalletType(str, Enum):
@@ -26,25 +25,16 @@ class WalletType(str, Enum):
 
 
 class WalletSchema(BusinessOwnedEntitySchema):
+    wallet_type: WalletType = WalletType.user
+    main_currency: Currency = Currency.none
+
+    is_default: bool = True
 
     @classmethod
     def create_exclude_set(cls) -> list[str]:
         return list(
             set(super().create_exclude_set() + ["business_name", "user_id"]) - {"uid"}
         )
-
-
-class WalletDetailSchema(WalletSchema):
-    wallet_type: WalletType = WalletType.user
-    main_currency: Currency
-
-    balance: dict[str, Decimal] = {}
-
-    model_config = ConfigDict(allow_inf_nan=True)
-
-    @field_serializer("balance")
-    def serialize_balance(self, balance: dict[str, Decimal]) -> dict[str, Decimal]:
-        return {k: (v if v.is_finite() else Decimal(0)) for k, v in balance.items()}
 
     @field_serializer("wallet_type")
     def serialize_wallet_type(self, wallet_type: WalletType) -> str:
@@ -55,12 +45,23 @@ class WalletDetailSchema(WalletSchema):
         return main_currency.value
 
 
+class WalletDetailSchema(WalletSchema):
+    balance: dict[str, Decimal] = {}
+
+    model_config = ConfigDict(allow_inf_nan=True)
+
+    @field_serializer("balance")
+    def serialize_balance(self, balance: dict[str, Decimal]) -> dict[str, Decimal]:
+        return {k: (v if v.is_finite() else Decimal(0)) for k, v in balance.items()}
+
+
 class WalletCreateSchema(BaseModel):
     user_id: uuid.UUID
     meta_data: dict | None = None
 
     wallet_type: WalletType = WalletType.user
     main_currency: Currency = Currency.none
+    is_default: bool = False
 
     @model_validator(mode="before")
     def validate_wallet_type(cls, values: dict):
@@ -71,6 +72,7 @@ class WalletCreateSchema(BaseModel):
 
 class WalletUpdateSchema(BaseModel):
     meta_data: dict | None = None
+    is_default: bool | None = None
 
 
 class WalletHoldSchema(BusinessOwnedEntitySchema):

@@ -2,9 +2,10 @@ import logging
 from contextlib import asynccontextmanager
 
 import fastapi
-from fastapi.middleware.cors import CORSMiddleware
-from fastapi_mongo_base.core import exceptions
-from usso.fastapi.integration import EXCEPTION_HANDLERS as USSO_EXCEPTION_HANDLERS
+from fastapi_mongo_base.core import app_factory
+
+from apps.accounting.routes import router as accounting_router
+from core.middlewares import DynamicCORSMiddleware
 
 from . import config, db
 
@@ -20,46 +21,18 @@ async def lifespan(app: fastapi.FastAPI):  # type: ignore
     logging.info("Shutdown complete")
 
 
-app = fastapi.FastAPI(
-    title=config.Settings.project_name.replace("-", " ").title(),
-    # description=DESCRIPTION,
-    version="0.1.0",
-    contact={
-        "name": "Mahdi Kiani",
-        "url": "https://github.com/ufaasio/ufaas-core",
-        "email": "mahdikiany@gmail.com",
-    },
-    license_info={
-        "name": "MIT License",
-        "url": "https://github.com/ufaasio/ufaas-core/blob/main/LICENSE",
-    },
+app = app_factory.create_app(
+    settings=config.Settings(),
     lifespan=lifespan,
+    origins=[
+        "http://localhost:8000",
+        "http://localhost:3000",
+    ],
 )
 
-for exc_class, handler in (
-    exceptions.EXCEPTION_HANDLERS | USSO_EXCEPTION_HANDLERS
-).items():
-    app.exception_handler(exc_class)(handler)
-
-
-origins = [
-    "http://localhost:8000",
-    "http://localhost:3000",
-]
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=origins,
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
-
-
-from core.middlewares import DynamicCORSMiddleware
 
 app.add_middleware(DynamicCORSMiddleware)
 
-from apps.accounting.routes import router as accounting_router
 
 app.include_router(accounting_router, prefix="/api/v1")
 app.include_router(accounting_router, prefix="/api/v1/apps/core")
@@ -73,16 +46,16 @@ app.include_router(accounting_router, prefix="/api/v1/apps/core")
 # )
 
 
-@app.get("/api/v1/health")
-async def health():
-    return {"status": "ok"}
+# @app.get("/api/v1/health")
+# async def health():
+#     return {"status": "ok"}
 
 
-@app.get(f"{config.Settings.base_path}/logs", include_in_schema=False)
-async def logs():
-    from collections import deque
+# @app.get(f"{config.Settings.base_path}/logs", include_in_schema=False)
+# async def logs():
+#     from collections import deque
 
-    with open(config.Settings.base_dir / "logs" / "info.log", "rb") as f:
-        last_100_lines = deque(f, maxlen=100)
+#     with open(config.Settings.base_dir / "logs" / "info.log", "rb") as f:
+#         last_100_lines = deque(f, maxlen=100)
 
-    return [line.decode("utf-8") for line in last_100_lines]
+#     return [line.decode("utf-8") for line in last_100_lines]

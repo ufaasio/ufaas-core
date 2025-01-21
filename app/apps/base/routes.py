@@ -1,9 +1,10 @@
 from typing import TypeVar
 
-from apps.base.models import BusinessEntity
 from fastapi_mongo_base.routes import AbstractBaseRouter
 from fastapi_mongo_base.schemas import BusinessEntitySchema
 from ufaas_fastapi_business.routes import AbstractAuthRouter, AbstractBusinessBaseRouter
+
+from apps.base.models import BusinessEntity
 
 from .models import BaseEntity
 from .schemas import BaseEntitySchema

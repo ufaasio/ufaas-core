@@ -74,9 +74,9 @@ async def test_business_retrieve_not_found(auth_headers_business):
         base_url="https://business.ufaas.io", headers=auth_headers_business
     ) as business_client:
         response = await business_client.get(f"{base_route}{StaticData.business_id_2}")
+
+        logging.info(f"business_retrieve: {response.json()}")
         assert response.status_code == 404
-        resp_json = response.json()
-    logging.info(f"business_retrieve: {resp_json}")
 
 
 @pytest.mark.asyncio

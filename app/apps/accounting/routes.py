@@ -1,16 +1,18 @@
 import asyncio
+import logging
 import uuid
 from datetime import datetime
 
 import fastapi
-from apps.base.routes import AbstractAuthSQLRouter
 from fastapi import Query, Request
 from fastapi_mongo_base.core.exceptions import BaseHTTPException
 from fastapi_mongo_base.routes import AbstractTaskRouter
 from fastapi_mongo_base.schemas import PaginatedResponse
-from server.config import Settings
 from ufaas_fastapi_business.middlewares import AuthorizationData, AuthorizationException
 from ufaas_fastapi_business.routes import AbstractAuthRouter
+
+from apps.base.routes import AbstractAuthSQLRouter
+from server.config import Settings
 
 from .models import Proposal, Transaction, TransactionNote, Wallet, WalletHold
 from .schemas import (
@@ -80,8 +82,10 @@ class WalletRouter(AbstractAuthRouter[Wallet, WalletDetailSchema]):
         paginated_response = await get_paginated(items, total)
 
         if auth.issuer_type == "Business" or paginated_response.total > 0:
-            # TODO check waht to do if app
+            # TODO check what to do if app
             return paginated_response
+
+        logging.info(f"No wallets for {auth.business.name=} {auth.user_id=} {total=}")
 
         items = [
             await self.model.create_item(
@@ -109,6 +113,23 @@ class WalletRouter(AbstractAuthRouter[Wallet, WalletDetailSchema]):
             raise AuthorizationException("User cannot create wallet")
 
         # TODO check if creating with this wallet_type is authorized
+        # if there is another default wallet and data.is_default is True, set its is_default to False
+        # if there is no other default wallet, set data.is_default to True
+
+        wallets: list[Wallet] = await Wallet.list_items(
+            user_id=auth.user_id, business_name=auth.business.name, is_default=True
+        )
+        if data.is_default:
+            for wallet in wallets:
+                if wallet.is_default:
+                    wallet.is_default = False
+                    await wallet.save()
+        else:
+            for wallet in wallets:
+                if wallet.is_default:
+                    break
+            else:
+                data.is_default = True
 
         item: Wallet = await super().create_item(request, data.model_dump())
         balance = await item.get_balance()
@@ -124,7 +145,7 @@ class WalletRouter(AbstractAuthRouter[Wallet, WalletDetailSchema]):
         # TODO check app permissions
 
         item: Wallet = await super().update_item(
-            request, uid, data.model_dump(exclude_none=True)
+            request, uid, data.model_dump(exclude_none=True, exclude_unset=True)
         )
         balance = await item.get_balance()
         return self.update_response_schema(**item.model_dump(), balance=balance)
@@ -192,6 +213,13 @@ class WalletHoldRouter(AbstractAuthRouter[WalletHold, WalletHoldSchema]):
         offset: int = Query(0, ge=0),
         limit: int = Query(10, ge=0, le=Settings.page_max_limit),
     ):
+        import logging
+
+        from ufaas_fastapi_business.models import Business
+
+        business = await Business.get_by_origin(request.url.hostname)
+        logging.info(f"{request.url.hostname=} {business.name=}")
+
         auth = await self.get_auth(request)
 
         items, total = await self.model.list_total_combined(

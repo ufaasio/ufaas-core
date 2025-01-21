@@ -2,6 +2,10 @@ import asyncio
 import logging
 from decimal import Decimal
 
+from pydantic import BaseModel, ConfigDict
+from sqlalchemy.ext.asyncio import AsyncSession
+from ufaas_fastapi_business.models import Business
+
 from apps.accounting.models import (
     Participant,
     Proposal,
@@ -9,10 +13,7 @@ from apps.accounting.models import (
     TransactionNote,
     Wallet,
 )
-from pydantic import BaseModel, ConfigDict
 from server.db import async_session
-from sqlalchemy.ext.asyncio import AsyncSession
-from ufaas_fastapi_business.models import Business
 
 
 class ParticipantWallet(BaseModel):

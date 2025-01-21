@@ -8,7 +8,8 @@ from fastapi import Query, Request
 from fastapi_mongo_base.core.exceptions import BaseHTTPException
 from fastapi_mongo_base.routes import AbstractTaskRouter
 from fastapi_mongo_base.schemas import PaginatedResponse
-from ufaas_fastapi_business.middlewares import AuthorizationData, AuthorizationException
+from ufaas_fastapi_business.core.exceptions import AuthorizationException
+from ufaas_fastapi_business.middlewares import AuthorizationData
 from ufaas_fastapi_business.routes import AbstractAuthRouter
 
 from apps.base.routes import AbstractAuthSQLRouter

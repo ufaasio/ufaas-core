@@ -432,10 +432,7 @@ class TransactionWRouter(TransactionRouter):
         super().config_routes(**kwargs)
 
 
-class ProposalRouter(
-    AbstractAuthRouter[Proposal, ProposalSchema],
-    AbstractTaskRouter[Proposal, ProposalSchema],
-):
+class ProposalRouter(AbstractAuthRouter[Proposal, ProposalSchema]):
     def __init__(self):
         super().__init__(
             model=Proposal,

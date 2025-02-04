@@ -104,7 +104,12 @@ class WalletRouter(AbstractAuthRouter[Wallet, WalletDetailSchema]):
         return paginated_response
 
     async def retrieve_item(self, request: Request, uid: uuid.UUID):
-        item: Wallet = await super().retrieve_item(request, uid)
+        auth = await self.get_auth(request)
+        item: Wallet = await self.get_item(
+            uid,
+            user_id=auth.user_id if auth.issuer_type == "User" else None,
+            business_name=auth.business.name,
+        )
         balance = await item.get_balance()
         return self.retrieve_response_schema(**item.model_dump(), balance=balance)
 
@@ -368,7 +373,9 @@ class TransactionRouter(AbstractAuthSQLRouter[Transaction, TransactionSchema]):
         if wallet_id:
             query_param["wallet_id"] = wallet_id
         if auth.user_id:
-            query_param["user_id"] = auth.user_id if auth.issuer_type == "User" else None
+            query_param["user_id"] = (
+                auth.user_id if auth.issuer_type == "User" else None
+            )
         if created_at_from:
             query_param["created_at_from"] = created_at_from
         if created_at_to:

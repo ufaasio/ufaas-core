@@ -72,7 +72,7 @@ class WalletRouter(AbstractAuthRouter[Wallet, WalletDetailSchema]):
             return paginated_response
 
         items, total = await self.model.list_total_combined(
-            user_id=auth.user_id,
+            user_id=auth.user_id if auth.issuer_type == "User" else None,
             business_name=auth.business.name,
             offset=offset,
             limit=limit,
@@ -224,7 +224,7 @@ class WalletHoldRouter(AbstractAuthRouter[WalletHold, WalletHoldSchema]):
         auth = await self.get_auth(request)
 
         items, total = await self.model.list_total_combined(
-            user_id=auth.user_id,
+            user_id=auth.user_id if auth.issuer_type == "User" else None,
             business_name=auth.business.name,
             wallet_id=wallet_id,
             currency=currency,
@@ -368,7 +368,7 @@ class TransactionRouter(AbstractAuthSQLRouter[Transaction, TransactionSchema]):
         if wallet_id:
             query_param["wallet_id"] = wallet_id
         if auth.user_id:
-            query_param["user_id"] = auth.user_id
+            query_param["user_id"] = auth.user_id if auth.issuer_type == "User" else None
         if created_at_from:
             query_param["created_at_from"] = created_at_from
         if created_at_to:

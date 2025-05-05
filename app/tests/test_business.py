@@ -43,7 +43,7 @@ base_route = "/api/v1/apps/business/businesses/"
 async def test_business_list_with_business(auth_headers_business):
     # list business
     async with httpx.AsyncClient(
-        base_url="https://business.ufaas.io", headers=auth_headers_business
+        base_url="https://business.uln.me", headers=auth_headers_business
     ) as business_client:
         response = await business_client.get(base_route)
         resp_json = response.json()
@@ -61,7 +61,7 @@ async def test_business_list_with_business(auth_headers_business):
 async def test_business_retrieve_no_auth():
     # retrieve business without access token
     async with httpx.AsyncClient(
-        base_url="https://business.ufaas.io"
+        base_url="https://business.uln.me"
     ) as business_client:
         response = await business_client.get(f"{base_route}{StaticData.business_id_1}")
         assert response.status_code == 401
@@ -71,7 +71,7 @@ async def test_business_retrieve_no_auth():
 async def test_business_retrieve_not_found(auth_headers_business):
     # retrieve business not found
     async with httpx.AsyncClient(
-        base_url="https://business.ufaas.io", headers=auth_headers_business
+        base_url="https://business.uln.me", headers=auth_headers_business
     ) as business_client:
         response = await business_client.get(f"{base_route}{StaticData.business_id_2}")
 
@@ -83,7 +83,7 @@ async def test_business_retrieve_not_found(auth_headers_business):
 async def test_business_retrieve(auth_headers_business):
     # retrieve business
     async with httpx.AsyncClient(
-        base_url="https://business.ufaas.io", headers=auth_headers_business
+        base_url="https://business.uln.me", headers=auth_headers_business
     ) as business_client:
         response = await business_client.get(f"{base_route}{StaticData.business_id_1}")
         resp_json = response.json()
